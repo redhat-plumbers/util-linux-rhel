@@ -25,6 +25,8 @@ nodist_libfdisk_la_SOURCES = libfdisk/src/fdiskP.h
 libfdisk_la_LIBADD = libcommon.la
 
 libfdisk_la_CFLAGS = \
+	$(AM_CFLAGS) \
+	$(SOLIB_CFLAGS) \
 	-I$(ul_libfdisk_incdir) \
 	-I$(top_srcdir)/libfdisk/src
 
@@ -39,6 +41,7 @@ libfdisk_la_CFLAGS += -I$(ul_libuuid_incdir)
 endif
 
 libfdisk_la_DEPENDENCIES = $(libfdisk_la_LIBADD)
+libfdisk_la_LDFLAGS = $(SOLIB_LDFLAGS)
 
 
 check_PROGRAMS += \
