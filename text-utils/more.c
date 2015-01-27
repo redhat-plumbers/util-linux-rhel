@@ -1588,6 +1588,8 @@ void search(char buf[], FILE *file, register int n)
 	context.line = saveln = Currline;
 	context.chrctr = startline;
 	lncount = 0;
+	if (!buf)
+		goto notfound;
 	if ((rc = regcomp(&re, buf, REG_NOSUB)) != 0) {
 		char s[REGERR_BUF];
 		regerror(rc, &re, s, sizeof s);
@@ -1644,6 +1646,7 @@ void search(char buf[], FILE *file, register int n)
 		}
 		free(previousre);
 		previousre = NULL;
+notfound:
 		more_error(_("Pattern not found"));
 	}
 }
