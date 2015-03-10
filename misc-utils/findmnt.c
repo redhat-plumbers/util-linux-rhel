@@ -236,9 +236,12 @@ static void set_source_match(const char *data)
 		set_match(COL_SOURCE, data);
 }
 
-static void enable_extra_target_match(void)
+/* @tb has to be from kernel (so no fstab or so)! */
+static void enable_extra_target_match(struct libmnt_table *tb)
 {
-	char *cn = NULL, *mnt = NULL;
+	char *cn = NULL;
+	const char *tgt = NULL, *mnt = NULL;
+	struct libmnt_fs *fs;
 
 	/*
 	 * Check if match pattern is mountpoint, if not use the
@@ -248,9 +251,11 @@ static void enable_extra_target_match(void)
 	if (!cn)
 		return;
 
-	mnt = mnt_get_mountpoint(cn);
-	if (!mnt || strcmp(mnt, cn) == 0)
-		return;
+	fs = mnt_table_find_mountpoint(tb, tgt, MNT_ITER_BACKWARD);
+	if (fs)
+		mnt = mnt_fs_get_target(fs);
+	if (mnt && strcmp(mnt, tgt) != 0)
+		set_match(COL_TARGET, xstrdup(mnt));	/* replace the current setting */
 
 	/* replace the current setting with the real mountpoint */
 	set_match(COL_TARGET, mnt);
@@ -1484,7 +1489,7 @@ int main(int argc, char *argv[])
 			 * try it again with extra functionality for target
 			 * match
 			 */
-			enable_extra_target_match();
+			enable_extra_target_match(tb);
 			rc = add_matching_lines(tb, tt, direction);
 		}
 	}
