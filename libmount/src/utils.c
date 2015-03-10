@@ -908,28 +908,6 @@ err:
 	return NULL;
 }
 
-char *mnt_get_fs_root(const char *path, const char *mnt)
-{
-	char *m = (char *) mnt, *res;
-	const char *p;
-	size_t sz;
-
-	if (!m)
-		m = mnt_get_mountpoint(path);
-	if (!m)
-		return NULL;
-
-	sz = strlen(m);
-	p = sz > 1 ? path + sz : path;
-
-	if (m != mnt)
-		free(m);
-
-	res = *p ? strdup(p) : strdup("/");
-	DBG(UTILS, mnt_debug("%s fs-root is %s", path, res));
-	return res;
-}
-
 /*
  * Search for @name kernel command parametr.
  *
@@ -1085,17 +1063,6 @@ int test_mountpoint(struct libmnt_test *ts, int argc, char *argv[])
 	return 0;
 }
 
-int test_fsroot(struct libmnt_test *ts, int argc, char *argv[])
-{
-	char *path = canonicalize_path(argv[1]),
-	     *mnt = path ? mnt_get_fs_root(path, NULL) : NULL;
-
-	printf("%s: %s\n", argv[1], mnt ? : "unknown");
-	free(mnt);
-	free(path);
-	return 0;
-}
-
 int test_filesystems(struct libmnt_test *ts, int argc, char *argv[])
 {
 	char **filesystems = NULL;
@@ -1170,7 +1137,6 @@ int main(int argc, char *argv[])
 	{ "--starts-with",   test_startswith,      "<string> <prefix>" },
 	{ "--ends-with",     test_endswith,        "<string> <prefix>" },
 	{ "--mountpoint",    test_mountpoint,      "<path>" },
-	{ "--fs-root",       test_fsroot,          "<path>" },
 	{ "--cd-parent",     test_chdir,           "<path>" },
 	{ "--kernel-cmdline",test_kernel_cmdline,  "<option> | <option>=" },
 	{ "--mkdir",         test_mkdir,           "<path>" },

@@ -46,6 +46,8 @@
 #include "mountP.h"
 #include "strutils.h"
 #include "loopdev.h"
+#include "fileutils.h"
+#include "canonicalize.h"
 
 static int is_mountinfo(struct libmnt_table *tb);
 
@@ -900,6 +902,20 @@ struct libmnt_fs *mnt_table_find_devno(struct libmnt_table *tb,
 	return NULL;
 }
 
+static char *remove_mountpoint_from_path(const char *path, const char *mnt)
+{
+        char *res;
+	const char *p;
+	size_t sz;
+
+	sz = strlen(mnt);
+	p = sz > 1 ? path + sz : path;
+
+	res = *p ? strdup(p) : strdup("/");
+	DBG(UTILS, mnt_debug("%s fs-root is %s", path, res));
+	return res;
+}
+
 /*
  * tb: /proc/self/mountinfo
  * fs: filesystem
@@ -919,7 +935,8 @@ struct libmnt_fs *mnt_table_get_fs_root(struct libmnt_table *tb,
 					unsigned long mountflags,
 					char **fsroot)
 {
-	char *root = NULL, *mnt = NULL;
+	char *root = NULL;
+	const char *mnt = NULL;
 	const char *fstype;
 	struct libmnt_fs *src_fs = NULL;
 
@@ -937,10 +954,15 @@ struct libmnt_fs *mnt_table_get_fs_root(struct libmnt_table *tb,
 		DBG(TAB, mnt_debug("fs-root for bind"));
 
 		src = xsrc = mnt_resolve_spec(mnt_fs_get_source(fs), tb->cache);
-		if (src)
-			mnt = mnt_get_mountpoint(src);
+		if (src) {
+			struct libmnt_fs *fs = mnt_table_find_mountpoint(tb,
+							src, MNT_ITER_BACKWARD);
+			if (fs)
+				mnt = mnt_fs_get_target(fs);
+		}
+
 		if (mnt)
-			root = mnt_get_fs_root(src, mnt);
+			root = remove_mountpoint_from_path(src, mnt);
 
 		if (xsrc && !tb->cache) {
 			free(xsrc);
@@ -1007,11 +1029,9 @@ dflt:
 
 	DBG(TAB, mnt_debug("FS root result: %s", root));
 
-	free(mnt);
 	return src_fs;
 err:
 	free(root);
-	free(mnt);
 	return NULL;
 }
 
