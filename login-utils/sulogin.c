@@ -81,6 +81,13 @@ static volatile sig_atomic_t sigchild;
 # define IUCLC		0
 #endif
 
+static int locked_account_password(const char *passwd)
+{
+	if (passwd && (*passwd == '*' || *passwd == '!'))
+		return 1;
+	return 0;
+}
+
 /*
  * Fix the tty modes and set reasonable defaults.
  */
@@ -423,7 +430,6 @@ static struct passwd *getrootpwent(int try_manually)
 		p = line;
 		break;
 	}
-
 	fclose(fp);
 
 	/*
@@ -460,7 +466,8 @@ static struct passwd *getrootpwent(int try_manually)
 		warnx(_("%s: no entry for root"), _PATH_SHADOW_PASSWD);
 		*pwd.pw_passwd = '\0';
 	}
-	if (!valid(pwd.pw_passwd)) {
+	/* locked accont passwords are valid too */
+	if (!locked_account_password(pwd.pw_passwd) && !valid(pwd.pw_passwd)) {
 		warnx(_("%s: root password garbled"), _PATH_SHADOW_PASSWD);
 		*pwd.pw_passwd = '\0';
 	}
@@ -470,7 +477,7 @@ static struct passwd *getrootpwent(int try_manually)
 /*
  * Ask by prompt for the password.
  */
-static void doprompt(const char *crypted, struct console *con)
+static void doprompt(const char *crypted, struct console *con, int deny)
 {
 	struct termios tty;
 
@@ -487,18 +494,25 @@ static void doprompt(const char *crypted, struct console *con)
 		if  ((con->file = fdopen(con->fd, "r+")) == (FILE*)0)
 			goto err;
 	}
+
+	if (deny)
+		fprintf(con->file, _("\nCannot open access to console, the root account is locked.\n"
+				     "See sulogin(8) man page for more details.\n\n"
+				     "Press Enter to continue.\n"));
+	else {
 #if defined(USE_ONELINE)
-	if (crypted[0])
-		fprintf(con->file, _("Give root password for login: "));
-	else
-		fprintf(con->file, _("Press enter for login: "));
+		if (crypted[0] && !locked_account_password(crypted))
+			fprintf(con->file, _("Give root password for login: "));
+		else
+			fprintf(con->file, _("Press Enter for login: "));
 #else
-	if (crypted[0])
-		fprintf(con->file, _("Give root password for maintenance\n"));
-	else
-		fprintf(con->file, _("Press enter for maintenance"));
-	fprintf(con->file, _("(or type Control-D to continue): "));
+		if (crypted[0] && !locked_account_password(crypted))
+			fprintf(con->file, _("Give root password for maintenance\n"));
+		else
+			fprintf(con->file, _("Press Enter for maintenance\n"));
+		fprintf(con->file, _("(or press Control-D to continue): "));
 #endif
+	}
 	fflush(con->file);
 err:
 	if (con->flags & CON_SERIAL)
@@ -914,6 +928,7 @@ int main(int argc, char **argv)
 		goto nofork;
 	}
 
+
 	mask_signal(SIGCHLD, chld_handler, &saved_sigchld);
 	do {
 		con = list_entry(ptr, struct console, entry);
@@ -930,12 +945,17 @@ int main(int argc, char **argv)
 				const char *passwd = pwd->pw_passwd;
 				const char *answer;
 				int failed = 0, doshell = 0;
+				int deny = !opt_e && locked_account_password(pwd->pw_passwd);
 
-				doprompt(passwd, con);
+				doprompt(passwd, con, deny);
+
 				if ((answer = getpasswd(con)) == NULL)
 					break;
+				if (deny)
+					exit(EXIT_FAILURE);
 
-				if (passwd[0] == '\0')
+				/* no password or locked account */
+				if (!passwd[0] || locked_account_password(passwd))
 					doshell++;
 				else {
 					const char *cryptbuf;
