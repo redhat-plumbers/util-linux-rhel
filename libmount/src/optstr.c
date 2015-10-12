@@ -962,7 +962,6 @@ static int set_uint_value(char **optstr, unsigned int num,
  */
 int mnt_optstr_fix_uid(char **optstr, char *value, size_t valsz, char **next)
 {
-	int rc = 0;
 	char *end;
 
 	if (!optstr || !*optstr || !value || !valsz)
@@ -974,10 +973,11 @@ int mnt_optstr_fix_uid(char **optstr, char *value, size_t valsz, char **next)
 
 	if (valsz == 7 && !strncmp(value, "useruid", 7) &&
 	    (*(value + 7) == ',' || !*(value + 7)))
-		rc = set_uint_value(optstr, getuid(), value, end, next);
+		return set_uint_value(optstr, getuid(), value, end, next);
 
 	else if (!isdigit(*value)) {
 		uid_t id;
+		int rc;
 		char *p = strndup(value, valsz);
 		if (!p)
 			return -ENOMEM;
@@ -985,16 +985,17 @@ int mnt_optstr_fix_uid(char **optstr, char *value, size_t valsz, char **next)
 		free(p);
 
 		if (!rc)
-			rc = set_uint_value(optstr, id, value, end, next);
+			return set_uint_value(optstr, id, value, end, next);
+	}
 
-	} else if (next) {
-		/* nothing */
+	if (next) {
+		/* no change, let's keep the original value */
 		*next = value + valsz;
 		if (**next == ',')
 			(*next)++;
 	}
 
-	return rc;
+	return 0;
 }
 
 /*
@@ -1009,7 +1010,6 @@ int mnt_optstr_fix_uid(char **optstr, char *value, size_t valsz, char **next)
  */
 int mnt_optstr_fix_gid(char **optstr, char *value, size_t valsz, char **next)
 {
-	int rc = 0;
 	char *end;
 
 	if (!optstr || !*optstr || !value || !valsz)
@@ -1021,9 +1021,10 @@ int mnt_optstr_fix_gid(char **optstr, char *value, size_t valsz, char **next)
 
 	if (valsz == 7 && !strncmp(value, "usergid", 7) &&
 	    (*(value + 7) == ',' || !*(value + 7)))
-		rc = set_uint_value(optstr, getgid(), value, end, next);
+		return set_uint_value(optstr, getgid(), value, end, next);
 
 	else if (!isdigit(*value)) {
+		int rc;
 		gid_t id;
 		char *p = strndup(value, valsz);
 		if (!p)
@@ -1032,15 +1033,17 @@ int mnt_optstr_fix_gid(char **optstr, char *value, size_t valsz, char **next)
 		free(p);
 
 		if (!rc)
-			rc = set_uint_value(optstr, id, value, end, next);
+			return set_uint_value(optstr, id, value, end, next);
 
-	} else if (next) {
+	}
+
+	if (next) {
 		/* nothing */
 		*next = value + valsz;
 		if (**next == ',')
 			(*next)++;
 	}
-	return rc;
+	return 0;
 }
 
 /*
