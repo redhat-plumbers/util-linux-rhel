@@ -540,7 +540,7 @@ int mnt_table_parse_stream(struct libmnt_table *tb, FILE *f, const char *filenam
 		}
 		if (rc) {
 			mnt_free_fs(fs);
-			if (rc == 1)
+			if (rc > 0)
 				continue;	/* recoverable error */
 			if (feof(f))
 				break;
