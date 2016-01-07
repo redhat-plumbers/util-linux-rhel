@@ -1939,7 +1939,7 @@ void __attribute__((__noreturn__)) hwaudit_exit(int status)
 {
 	if (hwaudit_on) {
 		audit_log_user_message(hwaudit_fd, AUDIT_USYS_CONFIG,
-				       "changing system time", NULL, NULL, NULL,
+				       "op=change-system-time", NULL, NULL, NULL,
 				       status ? 0 : 1);
 		close(hwaudit_fd);
 	}
