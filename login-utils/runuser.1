@@ -75,8 +75,9 @@ shell.
 \fB\-g\fR, \fB\-\-group\fR=\fIgroup\fR\fR
 specify the primary group, this option is allowed for root user only
 .TP
-\fB\-G\fR, \fB\-\-supp-group\fR=\fIgroup\fR\fR
-specify a supplemental group, this option is allowed for root user only
+.BR \-G , " \-\-supp\-group" = \fIgroup
+Specify a supplemental group.  This option is available to the root user only.  The first specified
+supplementary group is also used as a primary group if the option \fB\-\-group\fR is unspecified.
 .TP
 \fB\-\fR, \fB\-l\fR, \fB\-\-login\fR
 Starts the shell as login shell with an environment similar to a real
