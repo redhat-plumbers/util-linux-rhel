@@ -47,6 +47,7 @@
 
 /* /sys paths */
 #define _PATH_SYS_SYSTEM	"/sys/devices/system"
+#define _PATH_SYS_HYP_FEATURES "/sys/hypervisor/properties/features"
 #define _PATH_SYS_CPU		_PATH_SYS_SYSTEM "/cpu"
 #define _PATH_SYS_NODE		_PATH_SYS_SYSTEM "/node"
 #define _PATH_PROC_XEN		"/proc/xen"
@@ -54,6 +55,15 @@
 #define _PATH_PROC_CPUINFO	"/proc/cpuinfo"
 #define _PATH_PROC_PCIDEVS	"/proc/bus/pci/devices"
 #define _PATH_PROC_SYSINFO	"/proc/sysinfo"
+
+/* Xen Domain feature flag used for /sys/hypervisor/properties/features */
+#define XENFEAT_supervisor_mode_kernel		3
+#define XENFEAT_mmu_pt_update_preserve_ad	5
+#define XENFEAT_hvm_callback_vector			8
+
+#define XEN_FEATURES_PV_MASK	(1U << XENFEAT_mmu_pt_update_preserve_ad)
+#define XEN_FEATURES_PVH_MASK	( (1U << XENFEAT_supervisor_mode_kernel) \
+								| (1U << XENFEAT_hvm_callback_vector) )
 
 /* virtualization types */
 enum {
@@ -533,12 +543,30 @@ read_hypervisor(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 	if (mod->system != SYSTEM_SNAPSHOT)
 		read_hypervisor_cpuid(desc);
 
-	if (desc->hyper)
-		/* hvm */
+	if (desc->hyper) {
 		desc->virtype = VIRT_FULL;
 
-	else if (path_exist(_PATH_PROC_XEN)) {
-		/* Xen para-virt or dom0 */
+		if (desc->hyper == HYPER_XEN) {
+			uint32_t features;
+
+			FILE *fd = path_fopen("r", 0, _PATH_SYS_HYP_FEATURES);
+			if (fd && fscanf(fd, "%x", &features) == 1) {
+				/* Xen PV domain */
+				if (features & XEN_FEATURES_PV_MASK)
+					desc->virtype = VIRT_PARA;
+				/* Xen PVH domain */
+				else if ((features & XEN_FEATURES_PVH_MASK)
+								== XEN_FEATURES_PVH_MASK)
+					desc->virtype = VIRT_PARA;
+				fclose(fd);
+			} else {
+				err(EXIT_FAILURE, _("failed to read from: %s"),
+						_PATH_SYS_HYP_FEATURES);
+			}
+		}
+
+	/* Xen para-virt or dom0 */
+	} else if (path_exist(_PATH_PROC_XEN)) {
 		FILE *fd = path_fopen("r", 0, _PATH_PROC_XENCAP);
 		int dom0 = 0;
 
