@@ -656,7 +656,7 @@ main(int argc, char **argv) {
 		context_string = context_str(newcontext);
 
 		if (strcmp(context_string, oldcontext)!=0) {
-			if (fsetfilecon(DEV, context_string))
+			if (fsetfilecon(DEV, context_string) && errno != ENOTSUP)
 				err(EXIT_FAILURE, _("unable to relabel %s to %s"),
 						device_name, context_string);
 		}
