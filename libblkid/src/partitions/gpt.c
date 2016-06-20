@@ -169,8 +169,11 @@ static int is_pmbr_valid(blkid_probe pr, int *has)
 		goto ok;			/* skip PMBR check */
 
 	data = blkid_probe_get_sector(pr, 0);
-	if (!data)
+	if (!data) {
+		if (errno)
+			return -errno;
 		goto failed;
+	}
 
 	if (!is_valid_mbr_signature(data))
 		goto failed;
@@ -305,19 +308,27 @@ static int probe_gpt_pt(blkid_probe pr,
 	uint64_t fu, lu;
 	uint32_t ssf, i;
 	efi_guid_t guid;
+	int ret;
 
 	if (last_lba(pr, &lastlba))
 		goto nothing;
 
-	if (!is_pmbr_valid(pr, NULL))
+	ret = is_pmbr_valid(pr, NULL);
+	if (ret < 0)
+		return ret;
+	else if (ret == 0)
 		goto nothing;
 
+	errno = 0;
 	h = get_gpt_header(pr, &hdr, &e, (lba = GPT_PRIMARY_LBA), lastlba);
-	if (!h)
+	if (!h && !errno)
 		h = get_gpt_header(pr, &hdr, &e, (lba = lastlba), lastlba);
 
-	if (!h)
+	if (!h) {
+		if (errno)
+			return -errno;
 		goto nothing;
+	}
 
 	blkid_probe_use_wiper(pr, lba * blkid_probe_get_size(pr), 8);
 
@@ -388,12 +399,13 @@ static int probe_gpt_pt(blkid_probe pr,
 		blkid_partition_set_flags(par, e->attributes);
 	}
 
-	return 0;
+	return BLKID_PROBE_OK;
 
 nothing:
-	return 1;
+	return BLKID_PROBE_NONE;
+
 err:
-	return -1;
+	return -ENOMEM;
 }
 
 

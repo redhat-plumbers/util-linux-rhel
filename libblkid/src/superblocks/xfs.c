@@ -40,7 +40,7 @@ static int probe_xfs(blkid_probe pr, const struct blkid_idmag *mag)
 
 	xs = blkid_probe_get_sb(pr, mag, struct xfs_super_block);
 	if (!xs)
-		return -1;
+		return errno ? -errno : 1;
 
 	if (strlen(xs->xs_fname))
 		blkid_probe_set_label(pr, (unsigned char *) xs->xs_fname,

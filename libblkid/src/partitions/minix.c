@@ -26,12 +26,15 @@ static int probe_minix_pt(blkid_probe pr,
 	int i;
 
 	data = blkid_probe_get_sector(pr, 0);
-	if (!data)
+	if (!data) {
+		if (errno)
+			return -errno;
 		goto nothing;
+	}
 
 	ls = blkid_probe_get_partlist(pr);
 	if (!ls)
-		goto err;
+		goto nothing;
 
 	/* Parent is required, because Minix uses the same PT as DOS and
 	 * difference is only in primary partition (parent) type.
@@ -78,12 +81,12 @@ static int probe_minix_pt(blkid_probe pr,
 		blkid_partition_set_flags(par, p->boot_ind);
 	}
 
-	return 0;
+	return BLKID_PROBE_OK;
 
 nothing:
-	return 1;
+	return BLKID_PROBE_NONE;
 err:
-	return -1;
+	return -ENOMEM;
 }
 
 /* same as DOS */

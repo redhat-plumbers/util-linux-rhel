@@ -198,9 +198,9 @@ static int probe_jbd(blkid_probe pr,
 
 	es = ext_get_super(pr, NULL, &fi, NULL);
 	if (!es)
-		return -BLKID_ERR_PARAM;
+		return errno ? -errno : 1;
 	if (!(fi & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV))
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	ext_get_info(pr, 2, es);
 	return 0;
@@ -214,16 +214,16 @@ static int probe_ext2(blkid_probe pr,
 
 	es = ext_get_super(pr, &fc, &fi, &frc);
 	if (!es)
-		return -BLKID_ERR_PARAM;
+		return errno ? -errno : 1;
 
 	/* Distinguish between ext3 and ext2 */
 	if (fc & EXT3_FEATURE_COMPAT_HAS_JOURNAL)
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	/* Any features which ext2 doesn't understand */
 	if ((frc & EXT2_FEATURE_RO_COMPAT_UNSUPPORTED) ||
 	    (fi  & EXT2_FEATURE_INCOMPAT_UNSUPPORTED))
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	ext_get_info(pr, 2, es);
 	return 0;
@@ -237,16 +237,16 @@ static int probe_ext3(blkid_probe pr,
 
 	es = ext_get_super(pr, &fc, &fi, &frc);
 	if (!es)
-		return -BLKID_ERR_PARAM;
+		return errno ? -errno : 1;
 
 	/* ext3 requires journal */
 	if (!(fc & EXT3_FEATURE_COMPAT_HAS_JOURNAL))
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	/* Any features which ext3 doesn't understand */
 	if ((frc & EXT3_FEATURE_RO_COMPAT_UNSUPPORTED) ||
 	    (fi  & EXT3_FEATURE_INCOMPAT_UNSUPPORTED))
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	ext_get_info(pr, 3, es);
 	return 0;
@@ -261,14 +261,14 @@ static int probe_ext4dev(blkid_probe pr,
 
 	es = ext_get_super(pr, &fc, &fi, &frc);
 	if (!es)
-		return -BLKID_ERR_PARAM;
+		return errno ? -errno : 1;
 
 	/* Distinguish from jbd */
 	if (fi & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	if (!(le32_to_cpu(es->s_flags) & EXT2_FLAGS_TEST_FILESYS))
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	ext_get_info(pr, 4, es);
 	return 0;
@@ -282,16 +282,16 @@ static int probe_ext4(blkid_probe pr,
 
 	es = ext_get_super(pr, &fc, &fi, &frc);
 	if (!es)
-		return -1;
+		return errno ? -errno : 1;
 
 	/* Distinguish from jbd */
 	if (fi & EXT3_FEATURE_INCOMPAT_JOURNAL_DEV)
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	/* Ext4 has at least one feature which ext3 doesn't understand */
 	if (!(frc & EXT3_FEATURE_RO_COMPAT_UNSUPPORTED) &&
 	    !(fi  & EXT3_FEATURE_INCOMPAT_UNSUPPORTED))
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	/*
 	 * If the filesystem is a OK for use by in-development
@@ -304,7 +304,7 @@ static int probe_ext4(blkid_probe pr,
 	 * ext4dev.
 	 */
 	if (le32_to_cpu(es->s_flags) & EXT2_FLAGS_TEST_FILESYS)
-		return -BLKID_ERR_PARAM;
+		return 1;
 
 	ext_get_info(pr, 4, es);
 	return 0;

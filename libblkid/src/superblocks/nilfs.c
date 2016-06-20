@@ -82,7 +82,7 @@ static int probe_nilfs2(blkid_probe pr, const struct blkid_idmag *mag)
 
 	sb = blkid_probe_get_sb(pr, mag, struct nilfs_super_block);
 	if (!sb)
-		return -1;
+		return errno ? -errno : 1;
 
 	bytes = le16_to_cpu(sb->s_bytes);
 	crc = crc32(le32_to_cpu(sb->s_crc_seed), (unsigned char *)sb, sumoff);
@@ -90,7 +90,7 @@ static int probe_nilfs2(blkid_probe pr, const struct blkid_idmag *mag)
 	crc = crc32(crc, (unsigned char *)sb + sumoff + 4, bytes - sumoff - 4);
 
 	if (crc != le32_to_cpu(sb->s_sum))
-		return -1;
+		return 1;
 
 	if (strlen(sb->s_volume_name))
 		blkid_probe_set_label(pr, (unsigned char *) sb->s_volume_name,
