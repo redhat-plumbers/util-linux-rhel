@@ -502,7 +502,7 @@ static void log_lastlog(struct login_context *cxt)
 	if (!cxt->pwd)
 		return;
 
-	fd = open(_PATH_LASTLOG, O_RDWR, 0);
+	fd = open(_PATH_LASTLOG, O_RDWR | O_CREAT, 0);
 	if (fd < 0)
 		return;
 
