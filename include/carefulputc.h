@@ -26,4 +26,39 @@ static inline int carefulputc(int c, FILE *fp) {
 	return (ret < 0) ? EOF : 0;
 }
 
+static inline void fputs_quoted(const char *data, FILE *out)
+{
+	const char *p;
+
+	fputc('"', out);
+	for (p = data; p && *p; p++) {
+		if ((unsigned char) *p == 0x22 ||		/* " */
+		    (unsigned char) *p == 0x5c ||		/* \ */
+		    !isprint((unsigned char) *p) ||
+		    iscntrl((unsigned char) *p)) {
+
+			fprintf(out, "\\x%02x", (unsigned char) *p);
+		} else
+			fputc(*p, out);
+	}
+	fputc('"', out);
+}
+
+static inline void fputs_nonblank(const char *data, FILE *out)
+{
+	const char *p;
+
+	for (p = data; p && *p; p++) {
+		if (isblank((unsigned char) *p) ||
+		    (unsigned char) *p == 0x5c ||		/* \ */
+		    !isprint((unsigned char) *p) ||
+		    iscntrl((unsigned char) *p)) {
+
+			fprintf(out, "\\x%02x", (unsigned char) *p);
+
+		} else
+			fputc(*p, out);
+	}
+}
+
 #endif  /*  _CAREFUULPUTC_H  */

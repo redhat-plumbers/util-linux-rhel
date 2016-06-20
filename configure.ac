@@ -46,6 +46,13 @@ LIBMOUNT_LT_MINOR=1
 LIBMOUNT_LT_MICRO=0
 LIBMOUNT_VERSION_INFO=`expr $LIBMOUNT_LT_MAJOR + $LIBMOUNT_LT_MINOR`:$LIBMOUNT_LT_MICRO:$LIBMOUNT_LT_MINOR
 
+dnl libsmartcols version
+LIBSMARTCOLS_VERSION="$PACKAGE_VERSION_MAJOR.$PACKAGE_VERSION_MINOR.$PACKAGE_VERSION_RELEASE"
+LIBSMARTCOLS_LT_MAJOR=1
+LIBSMARTCOLS_LT_MINOR=1
+LIBSMARTCOLS_LT_MICRO=0
+LIBSMARTCOLS_VERSION_INFO=`expr $LIBSMARTCOLS_LT_MAJOR + $LIBSMARTCOLS_LT_MINOR`:$LIBSMARTCOLS_LT_MICRO:$LIBSMARTCOLS_LT_MINOR
+
 # Check whether exec_prefix=/usr:
 case $exec_prefix:$prefix in
 NONE:NONE | NONE:/usr | /usr:*)
@@ -762,6 +769,18 @@ AM_CONDITIONAL(BUILD_LIBMOUNT_TESTS, test "x$build_libmount" = xyes -a "x$enable
 AC_SUBST([LIBMOUNT_VERSION])
 AC_SUBST([LIBMOUNT_VERSION_INFO])
 AC_DEFINE_UNQUOTED(LIBMOUNT_VERSION, "$LIBMOUNT_VERSION", [libmount version string])
+
+
+dnl
+dnl libsmartcols
+dnl
+UL_BUILD_INIT([libsmartcols], [yes])
+AM_CONDITIONAL([BUILD_LIBSMARTCOLS], [test "x$build_libsmartcols" = xyes])
+AM_CONDITIONAL([BUILD_LIBSMARTCOLS_TESTS], [test "x$build_libsmartcols" = xyes -a "x$enable_static" = xyes])
+
+AC_SUBST([LIBSMARTCOLS_VERSION])
+AC_SUBST([LIBSMARTCOLS_VERSION_INFO])
+AC_DEFINE_UNQUOTED([LIBSMARTCOLS_VERSION], ["$LIBSMARTCOLS_VERSION"], [libsmartcols version string])
 
 
 dnl
@@ -1500,6 +1519,9 @@ libblkid/src/blkid.h
 libmount/docs/Makefile
 libmount/docs/version.xml
 libmount/src/libmount.h
+libsmartcols/docs/Makefile
+libsmartcols/docs/version.xml
+libsmartcols/src/libsmartcols.h
 po/Makefile.in
 ])
 
