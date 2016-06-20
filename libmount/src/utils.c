@@ -159,7 +159,7 @@ int mnt_chdir_to_parent(const char *target, char **filename)
 		if (!last || !*last)
 			memcpy(*filename, ".", 2);
 		else
-			memcpy(*filename, last, strlen(last) + 1);
+			memmove(*filename, last, strlen(last) + 1);
 	} else
 		free(buf);
 	return 0;
