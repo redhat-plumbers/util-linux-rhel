@@ -47,12 +47,7 @@ flag).
 will fork by default if changing the PID namespace, so that the new program
 and its children share the same PID namespace and are visible to each other.
 If \-\-no\-fork is used, the new program will be exec'ed without forking.
-.TP
-.B user namespace
-process will have distinct set of UIDs, GIDs and capabilities
-.RB ( CLONE_\:NEWUSER
-flag).
-.TP
+.PP
 See the
 .BR clone (2)
 for exact semantics of the flags.
@@ -88,9 +83,6 @@ the network namespace
 /proc/\fIpid\fR/ns/pid
 the PID namespace
 .TP
-/proc/\fIpid\fR/ns/user
-the user namespace
-.TP
 /proc/\fIpid\fR/root
 the root directory
 .TP
@@ -122,11 +114,6 @@ namespace specified by file.
 \fB\-p\fR, \fB\-\-pid\fR [\fIfile\fR]
 Enter the PID namespace.  If no file is specified enter the PID namespace of
 the target process.  If file is specified enter the PID namespace specified by
-file.
-.TP
-\fB\-U\fR, \fB\-\-user\fR [\fIfile\fR]
-Enter the user namespace.  If no file is specified enter the user namespace of
-the target process.  If file is specified enter the user namespace specified by
 file.
 .TP
 \fB\-r\fR, \fB\-\-root\fR [\fIdirectory\fR]

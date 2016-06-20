@@ -34,9 +34,6 @@ etc. (\fBCLONE_NEWNET\fP flag).
 .BR "pid namespace"
 children will have a distinct set of pid to process mappings than their parent.
 (\fBCLONE_NEWPID\fP flag).
-.TP
-.BR "user namespace"
-process will have distinct set of uids, gids and capabilities. (\fBCLONE_NEWUSER\fP flag).
 .PP
 See the \fBclone\fR(2) for exact semantics of the flags.
 .SH OPTIONS
@@ -58,9 +55,6 @@ Unshare the network namespace.
 .TP
 .BR \-p , " \-\-pid"
 Unshare the pid namespace.
-.TP
-.BR \-U , " \-\-user"
-Unshare the user namespace.
 .SH SEE ALSO
 .BR unshare (2),
 .BR clone (2)

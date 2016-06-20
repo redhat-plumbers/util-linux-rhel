@@ -42,12 +42,7 @@ static struct namespace_file {
 	int fd;
 } namespace_files[] = {
 	/* Careful the order is significant in this array.
-	 *
-	 * The user namespace comes first, so that it is entered
-	 * first.  This gives an unprivileged user the potential to
-	 * enter the other namespaces.
 	 */
-	{ .nstype = CLONE_NEWUSER, .name = "ns/user", .fd = -1 },
 	{ .nstype = CLONE_NEWIPC,  .name = "ns/ipc",  .fd = -1 },
 	{ .nstype = CLONE_NEWUTS,  .name = "ns/uts",  .fd = -1 },
 	{ .nstype = CLONE_NEWNET,  .name = "ns/net",  .fd = -1 },
@@ -71,7 +66,6 @@ static void usage(int status)
 	fputs(_(" -i, --ipc   [=<file>]  enter System V IPC namespace\n"), out);
 	fputs(_(" -n, --net   [=<file>]  enter network namespace\n"), out);
 	fputs(_(" -p, --pid   [=<file>]  enter pid namespace\n"), out);
-	fputs(_(" -U, --user  [=<file>]  enter user namespace\n"), out);
 	fputs(_(" -r, --root  [=<dir>]   set the root directory\n"), out);
 	fputs(_(" -w, --wd    [=<dir>]   set the working directory\n"), out);
 	fputs(_(" -F, --no-fork          do not fork before exec'ing <program>\n"), out);
@@ -168,7 +162,6 @@ int main(int argc, char *argv[])
 		{ "ipc", optional_argument, NULL, 'i' },
 		{ "net", optional_argument, NULL, 'n' },
 		{ "pid", optional_argument, NULL, 'p' },
-		{ "user", optional_argument, NULL, 'U' },
 		{ "root", optional_argument, NULL, 'r' },
 		{ "wd", optional_argument, NULL, 'w' },
 		{ "no-fork", no_argument, NULL, 'F' },
@@ -186,7 +179,7 @@ int main(int argc, char *argv[])
 	atexit(close_stdout);
 
 	while ((c =
-		getopt_long(argc, argv, "hVt:m::u::i::n::p::U::r::w::F",
+		getopt_long(argc, argv, "hVt:m::u::i::n::p::r::w::F",
 			    longopts, NULL)) != -1) {
 		switch (c) {
 		case 'h':
@@ -227,12 +220,6 @@ int main(int argc, char *argv[])
 				open_namespace_fd(CLONE_NEWPID, optarg);
 			else
 				namespaces |= CLONE_NEWPID;
-			break;
-		case 'U':
-			if (optarg)
-				open_namespace_fd(CLONE_NEWUSER, optarg);
-			else
-				namespaces |= CLONE_NEWUSER;
 			break;
 		case 'F':
 			do_fork = 0;

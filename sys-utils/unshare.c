@@ -45,7 +45,6 @@ static void usage(int status)
 	fputs(_(" -i, --ipc         unshare System V IPC namespace\n"), out);
 	fputs(_(" -n, --net         unshare network namespace\n"), out);
 	fputs(_(" -p, --pid         unshare pid namespace\n"), out);
-	fputs(_(" -U, --user        unshare user namespace\n"), out);
 
 	fputs(USAGE_SEPARATOR, out);
 	fputs(USAGE_HELP, out);
@@ -65,7 +64,6 @@ int main(int argc, char *argv[])
 		{ "ipc", no_argument, 0, 'i' },
 		{ "net", no_argument, 0, 'n' },
 		{ "pid", no_argument, 0, 'p' },
-		{ "user", no_argument, 0, 'U' },
 		{ NULL, 0, 0, 0 }
 	};
 
@@ -78,7 +76,7 @@ int main(int argc, char *argv[])
 	textdomain(PACKAGE);
 	atexit(close_stdout);
 
-	while ((c = getopt_long(argc, argv, "hVmuinpU", longopts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "hVmuinp", longopts, NULL)) != -1) {
 		switch (c) {
 		case 'h':
 			usage(EXIT_SUCCESS);
@@ -99,9 +97,6 @@ int main(int argc, char *argv[])
 			break;
 		case 'p':
 			unshare_flags |= CLONE_NEWPID;
-			break;
-		case 'U':
-			unshare_flags |= CLONE_NEWUSER;
 			break;
 		default:
 			usage(EXIT_FAILURE);
