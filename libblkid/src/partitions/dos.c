@@ -151,16 +151,6 @@ static int probe_dos_pt(blkid_probe pr,
 	if (memcmp(data, BLKID_AIX_MAGIC_STRING, BLKID_AIX_MAGIC_STRLEN) == 0)
 		goto nothing;
 
-	/*
-	 * Now that the 55aa signature is present, this is probably
-	 * either the boot sector of a FAT filesystem or a DOS-type
-	 * partition table.
-	 */
-	if (blkid_probe_is_vfat(pr) == 1) {
-		DBG(LOWPROBE, blkid_debug("probably FAT -- ignore"));
-		goto nothing;
-	}
-
 	p0 = (struct dos_partition *) (data + BLKID_MSDOS_PT_OFFSET);
 
 	/*
@@ -180,6 +170,16 @@ static int probe_dos_pt(blkid_probe pr,
 			DBG(LOWPROBE, blkid_debug("probably GPT -- ignore"));
 			goto nothing;
 		}
+	}
+
+	/*
+	 * Now that the 55aa signature is present, this is probably
+	 * either the boot sector of a FAT filesystem or a DOS-type
+	 * partition table.
+	 */
+	if (blkid_probe_is_vfat(pr) == 1) {
+		DBG(LOWPROBE, blkid_debug("probably FAT -- ignore"));
+		goto nothing;
 	}
 
 	blkid_probe_use_wiper(pr, BLKID_MSDOS_PT_OFFSET,
