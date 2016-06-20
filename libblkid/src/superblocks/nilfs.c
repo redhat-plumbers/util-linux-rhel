@@ -78,6 +78,7 @@ static int probe_nilfs2(blkid_probe pr, const struct blkid_idmag *mag)
 	static unsigned char sum[4];
 	const int sumoff = offsetof(struct nilfs_super_block, s_sum);
 	size_t bytes;
+	const size_t crc_start = sumoff + 4;
 	uint32_t crc;
 
 	sb = blkid_probe_get_sb(pr, mag, struct nilfs_super_block);
@@ -85,9 +86,15 @@ static int probe_nilfs2(blkid_probe pr, const struct blkid_idmag *mag)
 		return errno ? -errno : 1;
 
 	bytes = le16_to_cpu(sb->s_bytes);
+	/* ensure that no underrun can happen in the length parameter
+	 * of the crc32 call or more data are processed than read into
+	 * sb */
+	if (bytes < crc_start || bytes > sizeof(struct nilfs_super_block))
+		return 1;
+
 	crc = crc32(le32_to_cpu(sb->s_crc_seed), (unsigned char *)sb, sumoff);
 	crc = crc32(crc, sum, 4);
-	crc = crc32(crc, (unsigned char *)sb + sumoff + 4, bytes - sumoff - 4);
+	crc = crc32(crc, (unsigned char *)sb + crc_start, bytes - crc_start);
 
 	if (crc != le32_to_cpu(sb->s_sum))
 		return 1;
