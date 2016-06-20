@@ -332,7 +332,7 @@ static void rereadpt(int fd, const char *devname)
 static struct wipe_desc *
 do_wipe(struct wipe_desc *wp, const char *devname, int noact, int all, int quiet, int force)
 {
-	int flags, reread = 0;
+	int flags, reread = 0, need_force = 0;
 	blkid_probe pr;
 	struct wipe_desc *w, *wp0;
 	int zap = all ? 1 : wp->zap;
@@ -365,6 +365,15 @@ do_wipe(struct wipe_desc *wp, const char *devname, int noact, int all, int quiet
 		if (!wp->on_disk)
 			continue;
 
+		if (!force
+		    && wp->is_parttable
+		    && !blkid_probe_is_wholedisk(pr)) {
+			warnx(_("%s: ignore nested \"%s\" partition "
+				"table on non-whole disk device."), devname, wp->type);
+			need_force = 1;
+			continue;
+		}
+
 		if (zap) {
 			do_wipe_real(pr, devname, wp, noact, quiet);
 			if (wp->is_parttable)
@@ -376,6 +385,9 @@ do_wipe(struct wipe_desc *wp, const char *devname, int noact, int all, int quiet
 		if (!w->on_disk && !quiet)
 			warnx(_("%s: offset 0x%jx not found"), devname, w->offset);
 	}
+
+	if (need_force)
+		warnx(_("Use the --force option to force erase."));
 
 	fsync(blkid_probe_get_fd(pr));
 
