@@ -16,6 +16,7 @@
 #include "blkdev.h"
 #include "pathnames.h"
 #include "closestream.h"
+#include "sysfs.h"
 
 struct bdc {
 	long		ioc;		/* ioctl code */
@@ -364,7 +365,7 @@ static void do_commands(int fd, char **argv, int d)
 		}
 
 		if (res == -1) {
-			perror(bdcms[j].iocname);
+			warn(_("ioctl error on %s"), bdcms[j].iocname);
 			if (verbose)
 				printf(_("%s failed.\n"), _(bdcms[j].help));
 			exit(EXIT_FAILURE);
@@ -436,7 +437,8 @@ static void report_device(char *device, int quiet)
 	int ro, ssz, bsz;
 	long ra;
 	unsigned long long bytes;
-	struct hd_geometry g;
+	uint64_t start = 0;
+	struct stat st;
 
 	fd = open(device, O_RDONLY | O_NONBLOCK);
 	if (fd < 0) {
@@ -446,15 +448,27 @@ static void report_device(char *device, int quiet)
 	}
 
 	ro = ssz = bsz = 0;
-	g.start = ra = 0;
+	ra = 0;
+	if (fstat(fd, &st) == 0 && !sysfs_devno_is_wholedisk(st.st_rdev)) {
+		struct sysfs_cxt cxt;
+
+		if (sysfs_init(&cxt, st.st_rdev, NULL))
+			err(EXIT_FAILURE,
+				_("%s: failed to initialize sysfs handler"),
+				device);
+		if (sysfs_read_u64(&cxt, "start", &start))
+			err(EXIT_FAILURE,
+				_("%s: failed to read partition start from sysfs"),
+				device);
+		sysfs_deinit(&cxt);
+	}
 	if (ioctl(fd, BLKROGET, &ro) == 0 &&
 	    ioctl(fd, BLKRAGET, &ra) == 0 &&
 	    ioctl(fd, BLKSSZGET, &ssz) == 0 &&
 	    ioctl(fd, BLKBSZGET, &bsz) == 0 &&
-	    ioctl(fd, HDIO_GETGEO, &g) == 0 &&
 	    blkdev_get_size(fd, &bytes) == 0) {
-		printf("%s %5ld %5d %5d %10ld %15lld   %s\n",
-		       ro ? "ro" : "rw", ra, ssz, bsz, g.start, bytes, device);
+		printf("%s %5ld %5d %5d %10ju %15lld   %s\n",
+		       ro ? "ro" : "rw", ra, ssz, bsz, start, bytes, device);
 	} else {
 		if (!quiet)
 			warnx(_("ioctl error on %s"), device);

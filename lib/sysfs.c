@@ -638,6 +638,18 @@ err:
     return -1;
 }
 
+/*
+ * Return 0 or 1, or < 0 in case of error
+ */
+int sysfs_devno_is_wholedisk(dev_t devno)
+{
+	dev_t disk;
+
+	if (sysfs_devno_to_wholedisk(devno, NULL, 0, &disk) != 0)
+		return -1;
+
+	return devno == disk;
+}
 
 int sysfs_scsi_get_hctl(struct sysfs_cxt *cxt, int *h, int *c, int *t, int *l)
 {
