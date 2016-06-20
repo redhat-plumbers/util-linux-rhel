@@ -537,6 +537,8 @@ static int idinfo_probe(blkid_probe pr, const struct blkid_idinfo *id,
 
 	if (pr->size <= 0 || (id->minsz && id->minsz > pr->size))
 		goto nothing;	/* the device is too small */
+	if (pr->flags & BLKID_FL_NOSCAN_DEV)
+		goto nothing;
 
 	rc = blkid_probe_get_idmag(pr, id, &off, &mag);
 	if (rc != BLKID_PROBE_OK)
@@ -576,7 +578,11 @@ static int partitions_probe(blkid_probe pr, struct blkid_chain *chn)
 
 	if (!pr || chn->idx < -1)
 		return -EINVAL;
+
 	blkid_probe_chain_reset_vals(pr, chn);
+
+	if (pr->flags & BLKID_FL_NOSCAN_DEV)
+		return BLKID_PROBE_NONE;
 
 	if (chn->binary)
 		partitions_init_data(chn);
@@ -653,6 +659,8 @@ int blkid_partitions_do_subprobe(blkid_probe pr, blkid_partition parent,
 
 	if (!pr || !parent || !parent->size)
 		return -EINVAL;
+	if (pr->flags & BLKID_FL_NOSCAN_DEV)
+		return BLKID_PROBE_NONE;
 
 	/* range defined by parent */
 	sz = ((blkid_loff_t) parent->size) << 9;
@@ -706,6 +714,9 @@ static int blkid_partitions_probe_partition(blkid_probe pr)
 	blkid_partlist ls;
 	blkid_partition par;
 	dev_t devno;
+
+	if (pr->flags & BLKID_FL_NOSCAN_DEV)
+		goto nothing;
 
 	devno = blkid_probe_get_devno(pr);
 	if (!devno)
@@ -779,7 +790,7 @@ nothing:
 int blkid_probe_is_covered_by_pt(blkid_probe pr,
 				 blkid_loff_t offset, blkid_loff_t size)
 {
-	blkid_probe prc;
+	blkid_probe prc = NULL;
 	blkid_partlist ls = NULL;
 	blkid_loff_t start, end;
 	int nparts, i, rc = 0;
@@ -787,6 +798,9 @@ int blkid_probe_is_covered_by_pt(blkid_probe pr,
 	DBG(LOWPROBE, blkid_debug(
 		"=> checking if off=%jd size=%jd covered by PT",
 		offset, size));
+
+	if (pr->flags & BLKID_FL_NOSCAN_DEV)
+		goto done;
 
 	prc = blkid_clone_probe(pr);
 	if (!prc)

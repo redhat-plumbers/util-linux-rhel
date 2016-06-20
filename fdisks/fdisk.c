@@ -34,6 +34,7 @@
 #include "canonicalize.h"
 #include "strutils.h"
 #include "closestream.h"
+#include "sysfs.h"
 
 #include "fdisksunlabel.h"
 #include "fdisksgilabel.h"

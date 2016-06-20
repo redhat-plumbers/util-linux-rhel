@@ -112,6 +112,10 @@ blkid_dev blkid_verify(blkid_cache cache, blkid_dev dev)
 		   (unsigned long)diff));
 #endif
 
+	if (sysfs_devno_is_lvm_private(st.st_rdev)) {
+		blkid_free_dev(dev);
+		return NULL;
+	}
 	if (!cache->probe) {
 		cache->probe = blkid_new_probe();
 		if (!cache->probe) {
