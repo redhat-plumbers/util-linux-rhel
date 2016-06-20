@@ -125,28 +125,49 @@ flag is not provided, standard input is logged.
 The
 .B logger
 utility exits 0 on success, and >0 if an error occurs.
-.PP
+.SH FACILITIES AND LEVELS
 Valid facility names are:
-.IR auth , \ authpriv
-(for security information of a sensitive nature),
-.IR cron , \ daemon , \ ftp , \ kern
-(can't be generated from user process),
-.IR lpr , \ mail , \ news , \ security
-(deprecated synonym for
-.IR auth ), \ syslog , \ user , \ uucp ,
-and
-.IR local0 \ to \ local7 ,
-inclusive.
+.IP
+.TS
+tab(:);
+left l l.
+\fBauth
+\fBauthpriv\fR:for security information of a sensitive nature
+\fBcron
+\fBdaemon
+\fBftp
+\fBkern\fR:cannot be generated from userspace process, automatically converted to \fBuser
+\fBlpr
+\fBmail
+\fBnews
+\fBsyslog
+\fBuser
+\fBuucp
+\fBlocal0
+  to:
+\fBlocal7
+\fBsecurity\fR:deprecated synonym for \fBauth
+.TE
 .PP
 Valid level names are:
-.IR alert , \ crit , \ debug , \ emerg , \ err , \ error
-(deprecated synonym for
-.IR err ), \ info , \ notice , \ panic
-(deprecated synonym for
-.IR  emerg ), \ warning , \ warn
-(deprecated synonym for
-.IR warning ).
-For the priority order and intended purposes of these levels, see
+.IP
+.TS
+tab(:);
+left l l.
+\fBemerg
+\fBalert
+\fBcrit
+\fBerr
+\fBwarning
+\fBnotice
+\fBinfo
+\fBdebug
+\fBpanic\fR:deprecated synonym for \fBemerg
+\fBerror\fR:deprecated synonym for \fBerr
+\fBwarn\fR:deprecated synonym for \fBwarning
+.TE
+.PP
+For the priority order and intended purposes of these facilities and levels, see
 .BR syslog (3).
 .SH EXAMPLES
 logger System rebooted
