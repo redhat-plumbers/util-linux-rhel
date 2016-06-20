@@ -398,6 +398,93 @@ int mnt_table_find_next_fs(struct libmnt_table *tb, struct libmnt_iter *itr,
 	return 1;
 }
 
+static int mnt_table_move_parent(struct libmnt_table *tb, int oldid, int newid)
+{
+	struct libmnt_iter itr;
+	struct libmnt_fs *fs;
+
+	if (!tb)
+		return -EINVAL;
+	if (list_empty(&tb->ents))
+		return 0;
+
+
+	mnt_reset_iter(&itr, MNT_ITER_FORWARD);
+
+	while (mnt_table_next_fs(tb, &itr, &fs) == 0) {
+		if (fs->parent == oldid)
+			fs->parent = newid;
+	}
+	return 0;
+}
+
+/**
+ * mnt_table_uniq_fs:
+ * @tb: table
+ * @flags: MNT_UNIQ_*
+ * @cmp: function to compare filesystems
+ *
+ * This function de-duplicate the @tb, but does not change order of the
+ * filesystems. The @cmp function has to return 0 if the filesystems are
+ * equal, otherwise non-zero.
+ *
+ * The default is to keep in the table later mounted filesystems (function uses
+ * backward mode iterator).
+ *
+ * @MNT_UNIQ_FORWARD:  remove later mounted filesystems
+ * @MNT_UNIQ_KEEPTREE: keep parent->id relation ship stil valid
+ *
+ * Returns: negative number in case of error, or 0 o success.
+ */
+int mnt_table_uniq_fs(struct libmnt_table *tb, int flags,
+				int (*cmp)(struct libmnt_table *,
+					   struct libmnt_fs *,
+					   struct libmnt_fs *))
+{
+	struct libmnt_iter itr;
+	struct libmnt_fs *fs;
+	int direction = MNT_ITER_BACKWARD;
+
+	if (!tb || !cmp)
+		return -EINVAL;
+	if (list_empty(&tb->ents))
+		return 0;
+
+	if (flags & MNT_UNIQ_FORWARD)
+		direction = MNT_ITER_FORWARD;
+
+
+	mnt_reset_iter(&itr, direction);
+
+	if ((flags & MNT_UNIQ_KEEPTREE) && !is_mountinfo(tb))
+		flags &= ~MNT_UNIQ_KEEPTREE;
+
+	while (mnt_table_next_fs(tb, &itr, &fs) == 0) {
+		int want = 1;
+		struct libmnt_iter xtr;
+		struct libmnt_fs *x;
+
+		mnt_reset_iter(&xtr, direction);
+		while (want && mnt_table_next_fs(tb, &xtr, &x) == 0) {
+			if (fs == x)
+				break;
+			want = cmp(tb, x, fs) != 0;
+		}
+
+		if (!want) {
+			if (flags & MNT_UNIQ_KEEPTREE)
+				mnt_table_move_parent(tb, mnt_fs_get_id(fs),
+							  mnt_fs_get_parent_id(fs));
+
+
+
+			mnt_table_remove_fs(tb, fs);
+		}
+	}
+
+	return 0;
+}
+
 /**
  * mnt_table_set_iter:
  * @tb: tab pointer

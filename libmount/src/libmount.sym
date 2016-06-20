@@ -256,3 +256,9 @@ global:
 	mnt_context_find_umount_fs;
 	mnt_table_find_mountpoint;
 } MOUNT_2.22;
+
+/* backport from v2.25 to RHEL7 */
+MOUNT_2.25 {
+	mnt_table_uniq_fs;
+} MOUNT_2.23;
+
