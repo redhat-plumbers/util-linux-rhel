@@ -1027,6 +1027,11 @@ UL_REQUIRES_HAVE([lscpu], [cpu_set_t], [cpu_set_t type])
 AM_CONDITIONAL(BUILD_LSCPU, test "x$build_lscpu" = xyes)
 
 
+UL_BUILD_INIT([lslogins], [check])
+UL_REQUIRES_BUILD([lslogins], [libsmartcols])
+AM_CONDITIONAL([BUILD_LSLOGINS], [test "x$build_lslogins" = xyes])
+
+
 UL_BUILD_INIT([chcpu], [check])
 UL_REQUIRES_LINUX([chcpu])
 UL_REQUIRES_HAVE([chcpu], [cpu_set_t], [cpu_set_t type])
@@ -1402,6 +1407,37 @@ if test "x$with_systemdsystemunitdir" != "xno"; then
 fi
 
 AM_CONDITIONAL(HAVE_SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != "xno" ])
+
+
+#
+# Backport from upstrem to RHEL7.1
+#
+AC_ARG_WITH([systemd],
+  AS_HELP_STRING([--with-systemd], [build with support for systemd]),
+  [], [with_systemd=check]
+)
+
+have_systemd=no
+AS_IF([test "x$with_systemd" != xno], [
+  # new version -- all libsystemd-* libs merged into libsystemd
+  PKG_CHECK_MODULES([SYSTEMD], [libsystemd], [have_systemd=yes], [have_systemd=no])
+  # old versions
+  AS_IF([test "x$have_systemd" != "xyes"], [
+    PKG_CHECK_MODULES([SYSTEMD_DAEMON], [libsystemd-daemon],
+		      [have_systemd_daemon=yes], [have_systemd_daemon=no])
+    PKG_CHECK_MODULES([SYSTEMD_JOURNAL], [libsystemd-journal],
+		      [have_systemd_journal=yes], [have_systemd_journal=no])
+    AS_IF([test "x$have_systemd_daemon" = "xyes" -a "x$have_systemd_journal" = "xyes" ],[
+	   have_systemd=yes])
+  ])
+  AS_CASE([$with_systemd:$have_systemd],
+    [yes:no],
+      [AC_MSG_ERROR([systemd expected but libsystemd not found])],
+    [*:yes],
+       AC_DEFINE([HAVE_LIBSYSTEMD], [1], [Define if libsystemd is available])
+  )
+])
+
 
 
 AC_ARG_WITH([bashcompletiondir],

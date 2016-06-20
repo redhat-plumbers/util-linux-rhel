@@ -35,6 +35,7 @@ dist_noinst_HEADERS += \
 	include/procutils.h \
 	include/randutils.h \
 	include/rpmatch.h \
+	include/readutmp.h \
 	include/setproctitle.h \
 	include/strutils.h \
 	include/swapheader.h \
