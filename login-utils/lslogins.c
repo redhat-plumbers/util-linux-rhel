@@ -396,7 +396,7 @@ again:
 			x = snprintf(p, len, "%s,", grp->gr_name);
 		}
 
-		if (x < 0 || (size_t) x + 1 > len) {
+		if (x < 0 || (size_t) x >= len) {
 			size_t cur = p - res;
 
 			maxlen *= 2;
@@ -496,20 +496,23 @@ static int parse_btmp(struct lslogins_control *ctl, char *path)
 static int get_sgroups(gid_t **list, size_t *len, struct passwd *pwd)
 {
 	size_t n = 0;
+	int ngroups = 0;
 
 	*len = 0;
 	*list = NULL;
 
 	/* first let's get a supp. group count */
-	getgrouplist(pwd->pw_name, pwd->pw_gid, *list, (int *) len);
-	if (!*len)
+	getgrouplist(pwd->pw_name, pwd->pw_gid, *list, &ngroups);
+	if (!ngroups)
 		return -1;
 
-	*list = xcalloc(1, *len * sizeof(gid_t));
+	*list = xcalloc(1, ngroups * sizeof(gid_t));
 
 	/* now for the actual list of GIDs */
-	if (-1 == getgrouplist(pwd->pw_name, pwd->pw_gid, *list, (int *) len))
+	if (-1 == getgrouplist(pwd->pw_name, pwd->pw_gid, *list, &ngroups))
 		return -1;
+
+	*len = (size_t) ngroups;
 
 	/* getgroups also returns the user's primary GID - dispose of it */
 	while (n < *len) {
@@ -852,7 +855,7 @@ static int get_user(struct lslogins_control *ctl, struct lslogins_user **user,
 		    const char *username)
 {
 	*user = get_user_info(ctl, username);
-	if (!*user && errno)
+	if (!*user)
 		if (IS_REAL_ERRNO(errno))
 			return -1;
 	return 0;
@@ -1193,16 +1196,18 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs(USAGE_HEADER, out);
 	fprintf(out, _(" %s [options]\n"), program_invocation_short_name);
 
+	fputs(USAGE_SEPARATOR, out);
+	fputs(_("Display information about known users in the system.\n"), out);
+
 	fputs(USAGE_OPTIONS, out);
 	fputs(_(" -a, --acc-expiration     display info about passwords expiration\n"), out);
 	fputs(_(" -c, --colon-separate     display data in a format similar to /etc/passwd\n"), out);
 	fputs(_(" -e, --export             display in an export-able output format\n"), out);
 	fputs(_(" -f, --failed             display data about the users' last failed logins\n"), out);
-	fputs(_(" -G, --groups-info        display information about groups\n"), out);
+	fputs(_(" -G, --supp-groups        display information about groups\n"), out);
 	fputs(_(" -g, --groups=<groups>    display users belonging to a group in <groups>\n"), out);
 	fputs(_(" -L, --last               show info about the users' last login sessions\n"), out);
 	fputs(_(" -l, --logins=<logins>    display only users from <logins>\n"), out);
-	fputs(_(" -m, --supp-groups        display supplementary groups as well\n"), out);
 	fputs(_(" -n, --newline            display each piece of information on a new line\n"), out);
 	fputs(_("     --noheadings         don't print headings\n"), out);
 	fputs(_("     --notruncate         don't truncate output\n"), out);
@@ -1226,7 +1231,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 		fprintf(out, " %14s  %s\n", coldescs[i].name,
 				_(coldescs[i].help));
 
-	fprintf(out, _("\nFor more details see lslogins(1).\n"));
+	fprintf(out, USAGE_MAN_TAIL("lslogins(1)"));
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -1241,8 +1246,7 @@ int main(int argc, char *argv[])
 
 	/* long only options. */
 	enum {
-		OPT_VER = CHAR_MAX + 1,
-		OPT_WTMP,
+		OPT_WTMP = CHAR_MAX + 1,
 		OPT_BTMP,
 		OPT_NOTRUNC,
 		OPT_NOHEAD,
@@ -1300,7 +1304,7 @@ int main(int argc, char *argv[])
 	add_column(columns, ncolumns++, COL_UID);
 	add_column(columns, ncolumns++, COL_USER);
 
-	while ((c = getopt_long(argc, argv, "acfGg:hLl:no:prsuVxzZ",
+	while ((c = getopt_long(argc, argv, "acefGg:hLl:no:prsuVzZ",
 				longopts, NULL)) != -1) {
 
 		err_exclusive_options(c, longopts, excl, excl_st);
@@ -1397,6 +1401,7 @@ int main(int argc, char *argv[])
 			{
 				size_t i;
 
+				ctl->time_mode = TIME_INVALID;
 				for (i = 0; i < ARRAY_SIZE(timefmts); i++) {
 					if (strcmp(timefmts[i].name, optarg) == 0) {
 						ctl->time_mode = timefmts[i].val;
@@ -1404,7 +1409,7 @@ int main(int argc, char *argv[])
 					}
 				}
 				if (ctl->time_mode == TIME_INVALID)
-					usage(stderr);
+					errx(EXIT_FAILURE, _("unknown time format: %s"), optarg);
 			}
 			break;
 		case 'V':
@@ -1433,7 +1438,7 @@ int main(int argc, char *argv[])
 		logins = argv[optind];
 		outmode = OUT_PRETTY;
 	} else if (argc != optind)
-		usage(stderr);
+		errx(EXIT_FAILURE, _("Only one user may be specified. Use -l for multiple users."));
 
 	scols_init_debug(0);
 
