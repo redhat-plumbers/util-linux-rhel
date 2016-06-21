@@ -222,7 +222,7 @@ static void __attribute__ ((__noreturn__)) usage(FILE *out)
 		" -f, --file <file>     log the contents of this file\n"
 		" -h, --help            display this help text and exit\n"), out);
 	fputs(_(" -n, --server <name>   write to this remote syslog server\n"
-		" -P, --port <number>   use this UDP port\n"
+		" -P, --port <port>     use this port for UDP or TCP connection\n"
 		" -p, --priority <prio> mark given message with this priority\n"
 		" -s, --stderr          output message to standard error as well\n"), out);
 	fputs(_(" -t, --tag <tag>       mark every line with this tag\n"
