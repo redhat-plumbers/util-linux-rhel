@@ -15,7 +15,7 @@ _blkdiscard_module()
 	esac
 	case $cur in
 		-*)
-			OPTS="--offset --length --secure --verbose --help --version"
+			OPTS="--offset --length --secure --zeroout --verbose --help --version"
 			COMPREPLY=( $(compgen -W "${OPTS[*]}" -- $cur) )
 			return 0
 			;;
