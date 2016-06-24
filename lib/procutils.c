@@ -25,6 +25,7 @@
 #include "procutils.h"
 #include "at.h"
 #include "c.h"
+#include "all-io.h"
 
 /*
  * @pid: process ID for which we want to obtain the threads group
@@ -191,6 +192,48 @@ int proc_next_pid(struct proc_processes *ps, pid_t *pid)
 	} while (1);
 
 	return 0;
+}
+
+/* returns process command path, use free() for result */
+static char *proc_file_strdup(pid_t pid, const char *name)
+{
+	char buf[BUFSIZ], *res = NULL;
+	ssize_t sz = 0;
+	size_t i;
+	int fd;
+
+	snprintf(buf, sizeof(buf), "/proc/%d/%s", (int) pid, name);
+	fd = open(buf, O_RDONLY);
+	if (fd < 0)
+		goto done;
+
+	sz = read_all(fd, buf, sizeof(buf));
+	if (sz <= 0)
+		goto done;
+
+	for (i = 0; i < (size_t) sz; i++) {
+
+		if (buf[i] == '\0')
+			buf[i] = ' ';
+	}
+	buf[sz - 1] = '\0';
+	res = strdup(buf);
+done:
+	if (fd >= 0)
+		close(fd);
+	return res;
+}
+
+/* returns process command path, use free() for result */
+char *proc_get_command(pid_t pid)
+{
+	return proc_file_strdup(pid, "cmdline");
+}
+
+/* returns process command name, use free() for result */
+char *proc_get_command_name(pid_t pid)
+{
+	return proc_file_strdup(pid, "comm");
 }
 
 #ifdef TEST_PROGRAM

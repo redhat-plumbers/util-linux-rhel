@@ -8,6 +8,7 @@ libcommon_la_SOURCES = \
 	lib/colors.c \
 	lib/crc32.c \
 	lib/env.c \
+	lib/idcache.c \
 	lib/fileutils.c \
 	lib/ismounted.c \
 	lib/mangle.c \
