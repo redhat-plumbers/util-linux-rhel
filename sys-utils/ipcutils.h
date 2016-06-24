@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <grp.h>
 #include <pwd.h>
+#include <stdint.h>
 
 /*
  * SHM_DEST and SHM_LOCKED are defined in kernel headers, but inside
@@ -34,11 +35,11 @@
 # define SHM_INFO	14
 struct shm_info {
 	int used_ids;
-	ulong shm_tot;		/* total allocated shm */
-	ulong shm_rss;		/* total resident shm */
-	ulong shm_swp;		/* total swapped shm */
-	ulong swap_attempts;
-	ulong swap_successes;
+	unsigned long shm_tot;		/* total allocated shm */
+	unsigned long shm_rss;		/* total resident shm */
+	unsigned long shm_swp;		/* total swapped shm */
+	unsigned long swap_attempts;
+	unsigned long swap_successes;
 };
 #endif
 
@@ -118,7 +119,7 @@ struct ipc_stat {
 };
 
 extern void ipc_print_perms(FILE *f, struct ipc_stat *is);
-extern void ipc_print_size(int unit, char *msg, size_t size, const char *end, int width);
+extern void ipc_print_size(int unit, char *msg, uint64_t size, const char *end, int width);
 
 /* See 'struct shmid_kernel' in kernel sources
  */

@@ -50,16 +50,25 @@ function ts_skip_nonroot {
 }
 
 function ts_failed_subtest {
-	if [ x"$1" == x"" ]; then
-		echo " FAILED ($TS_NS)"
-	else
-		echo " FAILED ($1)"
+	local msg="FAILED"
+	local ret=1
+	if [ "$TS_KNOWN_FAIL" = "yes" ]; then
+		msg="KNOWN FAILED"
+		ret=0
 	fi
+
+	if [ x"$1" == x"" ]; then
+		echo " $msg ($TS_NS)"
+	else
+		echo " $msg ($1)"
+	fi
+
+	return $ret
 }
 
 function ts_failed {
 	ts_failed_subtest "$1"
-	exit 1
+	exit $?
 }
 
 function ts_ok_subtest {
@@ -150,6 +159,7 @@ function ts_init_env {
 	TS_SUBDIR=$(dirname $TS_SCRIPT)
 	TS_TESTNAME=$(basename $TS_SCRIPT)
 	TS_COMPONENT=$(basename $TS_SUBDIR)
+	TS_KNOWN_FAIL="no"
 
 	TS_NSUBTESTS=0
 	TS_NSUBFAILED=0

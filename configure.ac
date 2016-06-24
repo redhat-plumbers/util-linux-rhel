@@ -1038,6 +1038,12 @@ UL_REQUIRES_BUILD([lsns], [libsmartcols])
 AM_CONDITIONAL([BUILD_LSNS], [test "x$build_lsns" = xyes])
 
 
+UL_BUILD_INIT([lsipc], [check])
+UL_REQUIRES_LINUX([lsipc])
+UL_REQUIRES_BUILD([lsipc], [libsmartcols])
+AM_CONDITIONAL([BUILD_LSIPC], [test "x$build_lsipc" = xyes])
+
+
 UL_BUILD_INIT([chcpu], [check])
 UL_REQUIRES_LINUX([chcpu])
 UL_REQUIRES_HAVE([chcpu], [cpu_set_t], [cpu_set_t type])
