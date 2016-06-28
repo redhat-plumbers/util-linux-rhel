@@ -110,6 +110,14 @@
 	_max1 > _max2 ? _max1 : _max2; })
 #endif
 
+#ifndef cmp_numbers
+# define cmp_numbers(x, y) __extension__ ({	\
+	__typeof__(x) _a = (x);			\
+	__typeof__(y) _b = (y);			\
+	(void) (&_a == &_b);			\
+	_a == _b ? 0 : _a > _b ? 1 : -1; })
+#endif
+
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
