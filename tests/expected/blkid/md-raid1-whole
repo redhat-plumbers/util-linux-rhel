@@ -25,7 +25,7 @@ Command (m for help):
 Disk /dev/md8: 52 MB, 52363264 bytes, 102272 sectors
 Units = sectors of 1 * 512 = 512 bytes
 Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / <removed> bytes
 Disk label type: dos
 
 

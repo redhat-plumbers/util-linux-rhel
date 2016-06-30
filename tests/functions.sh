@@ -31,6 +31,17 @@ function ts_canonicalize {
 	fi
 }
 
+function ts_check_test_command {
+	if [ ! -x "$1" ]; then
+		ts_skip "${1##*/} not found"
+	fi
+}
+
+function ts_check_prog {
+	local cmd=$1
+	type "$cmd" >/dev/null 2>&1 || ts_skip "missing in PATH: $cmd"
+}
+
 function ts_skip_subtest {
 	echo " IGNORE ($1)"
 }
@@ -474,14 +485,20 @@ function ts_fdisk_clean {
 	local DEVNAME=$(basename "$1")
 
 	# remove non comparable parts of fdisk output
-	if [ x"${DEVNAME}" != x"" ]; then
-	       sed -i -e "s/\/dev\/${DEVNAME}/\/dev\/.../g" $TS_OUTPUT
+	if [ -n "${DEVNAME}" ]; then
+		sed -i -e "s@${DEVNAME}@...@;" $TS_OUTPUT
 	fi
 
-	sed -i -e 's/Disk identifier:.*//g' \
-	       -e 's/Building a new.*//g' \
-	       -e 's/Welcome to fdisk.*//g' \
-	       $TS_OUTPUT
+	sed -i \
+		-e 's/Disk identifier:.*//' \
+		-e 's/Building a new.*//' \
+		-e 's/Created a new.*//' \
+		-e 's/^Device[[:blank:]]*Start/Device             Start/' \
+		-e 's/^Device[[:blank:]]*Boot/Device     Boot/' \
+		-e 's/Welcome to fdisk.*//' \
+		-e 's/typescript file.*/typescript file <removed>./' \
+		-e 's@^\(I/O size (minimum/op.* bytes /\) [1-9][0-9]* @\1 <removed> @' \
+		$TS_OUTPUT
 }
 
 function ts_scsi_debug_init {
