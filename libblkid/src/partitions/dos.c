@@ -48,6 +48,12 @@ static int parse_dos_extended(blkid_probe pr, blkid_parttable tab,
 	int ct_nodata = 0;	/* count ext.partitions without data partitions */
 	int i;
 
+	DBG(LOWPROBE, blkid_debug("parse EBR [start=%d, size=%d]", ex_start/ssf, ex_size/ssf));
+	if (ex_start == 0) {
+		DBG(LOWPROBE, blkid_debug("Bad offset in primary extended partition -- ignore"));
+		return 0;
+	}
+
 	while (1) {
 		struct dos_partition *p, *p0;
 		uint32_t start, size;
@@ -100,6 +106,13 @@ static int parse_dos_extended(blkid_probe pr, blkid_parttable tab,
 					continue;
 			}
 
+			/* Avoid recursive non-empty links, see ct_nodata counter */
+			if (blkid_partlist_get_partition_by_start(ls, abs_start)) {
+				DBG(LOWPROBE, blkid_debug("#%d: EBR duplicate data partition [abs start=%u] -- ignore",
+							i + 1, abs_start));
+				continue;
+			}
+
 			par = blkid_partlist_add_partition(ls, tab, abs_start, size);
 			if (!par)
 				return -ENOMEM;
@@ -116,8 +129,12 @@ static int parse_dos_extended(blkid_probe pr, blkid_parttable tab,
 			start = dos_partition_start(p) * ssf;
 			size = dos_partition_size(p) * ssf;
 
-			if (size && is_extended(p))
-				break;
+			if (size && is_extended(p)) {
+				if (start == 0)
+					DBG(LOWPROBE, blkid_debug("#%d: EBR link offset is zero -- ignore", i + 1));
+				else
+					break;
+			}
 		}
 		if (i == 4)
 			goto leave;
