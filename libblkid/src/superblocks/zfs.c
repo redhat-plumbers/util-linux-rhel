@@ -115,7 +115,7 @@ static void zfs_extract_guid_name(blkid_probe pr, loff_t offset)
 
 			nvs->nvs_type = be32_to_cpu(nvs->nvs_type);
 			nvs->nvs_strlen = be32_to_cpu(nvs->nvs_strlen);
-			if (nvs->nvs_strlen > UINT_MAX - sizeof(*nvs))
+			if (nvs->nvs_strlen > INT_MAX - sizeof(*nvs))
 				break;
 			avail -= nvs->nvs_strlen + sizeof(*nvs);
 			nvdebug("nvstring: type %u string %*s\n", nvs->nvs_type,
@@ -201,7 +201,6 @@ static int find_uberblocks(const void *label, loff_t *ub_offset, int *swap_endia
  * #4 (@ 132kB) is the first one written on a new filesystem. */
 static int probe_zfs(blkid_probe pr, const struct blkid_idmag *mag)
 {
-	uint64_t swab_magic = swab64(UBERBLOCK_MAGIC);
 	int swab_endian = 0;
 	struct zfs_uberblock *ub;
 	loff_t offset, ub_offset = 0;
