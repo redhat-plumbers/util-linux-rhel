@@ -78,8 +78,10 @@ Do not canonicalize paths.  For more details about this option see the
 man page.
 .TP
 \fB\-d\fR, \fB\-\-detach\-loop\fR
-In case the unmounted device was a loop device, also free this loop
-device.
+When the unmounted device was a loop device, also free this loop
+device. This option is unnecessary for devices initialized by
+.BR mount (8),
+in this case "autoclear" functionality is enabled by default.
 .TP
 \fB\-\-fake\fP
 Causes everything to be done except for the actual system call; this 'fakes'
@@ -145,12 +147,14 @@ Print version and exit.
 .SH "THE LOOP DEVICE"
 The
 .B umount
-command will free the loop device (if any) associated with the mount, in
-case it finds the option 'loop=...' in
-.IR /etc/mtab ,
-or when the \-d option was given.  Any pending loop devices can be freed
-using 'losetup -d', see
-.BR losetup (8).
+command will automatically detach loop device previously initialized by
+.BR mount (8)
+command independently of /etc/mtab.
+
+In this case the device is initialized with "autoclear" flag (see
+.BR losetup (8)
+output for more details), otherwise it's necessary to use the option \fB \-\-detach\-loop\fR
+or call \fBlosetup -d <device>\fR. The autoclear feature is supported since Linux 2.6.25.
 .SH NOTES
 The syntax of external umount helpers is:
 .PP
