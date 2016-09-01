@@ -108,6 +108,7 @@ extern int string_to_bitmask(const char *list,
 extern int parse_range(const char *str, int *lower, int *upper, int def);
 
 extern int streq_except_trailing_slash(const char *s1, const char *s2);
+extern int streq_paths(const char *a, const char *b);
 
 extern char *strnappend(const char *s, const char *suffix, size_t b);
 extern char *strappend(const char *s, const char *suffix);

@@ -697,6 +697,56 @@ int streq_except_trailing_slash(const char *s1, const char *s2)
 	return equal;
 }
 
+static const char *next_path_segment(const char *str, size_t *sz)
+{
+	const char *start, *p;
+
+	start = str;
+	*sz = 0;
+	while (start && *start == '/' && *(start + 1) == '/')
+		start++;
+
+	if (!start || !*start)
+		return NULL;
+
+	for (*sz = 1, p = start + 1; *p && *p != '/'; p++) {
+		(*sz)++;
+	}
+
+	return start;
+}
+
+int streq_paths(const char *a, const char *b)
+{
+	while (a && b) {
+		size_t a_sz, b_sz;
+		const char *a_seg = next_path_segment(a, &a_sz);
+		const char *b_seg = next_path_segment(b, &b_sz);
+
+		/*
+		fprintf(stderr, "A>>>(%zu) '%s'\n", a_sz, a_seg);
+		fprintf(stderr, "B>>>(%zu) '%s'\n", b_sz, b_seg);
+		*/
+
+		/* end of the path */
+		if (a_sz + b_sz == 0)
+			return 1;
+
+		/* ignore tailing slash */
+		if (a_sz + b_sz == 1 &&
+		    ((a_seg && *a_seg == '/') || (b_seg && *b_seg == '/')))
+			return 1;
+
+		if (a_sz != b_sz || strncmp(a_seg, b_seg, a_sz) != 0)
+			return 0;
+
+		a = a_seg + a_sz;
+		b = b_seg + b_sz;
+	};
+
+	return 0;
+}
+
 char *strnappend(const char *s, const char *suffix, size_t b)
 {
         size_t a;
