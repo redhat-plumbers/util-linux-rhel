@@ -222,13 +222,10 @@ Display version number and exit.
 .BI \-w " writecachefile"
 Write the device cache to
 .I writecachefile
-instead of writing it to the default cache file
-.IR /etc/blkid/blkid.tab .
-If you don't want to save the cache to the default file, specify
-.IR /dev/null.
-If not specified it will be the same file as that given by the
-.B \-c
-option.
+instead of writing it to the default cache file.
+
+This functionality has never been implemented and the option is no more 
+supported on the recent blkid versions (>= v2.21).
 .TP
 .I device
 Display tokens from only the specified device.  It is possible to
