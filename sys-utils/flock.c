@@ -88,6 +88,35 @@ static void timeout_handler(int sig)
   timeout_expired = 1;
 }
 
+/* backport from v2.24 */
+static int open_file(const char *filename, int *flags)
+{
+	int fd;
+	int fl = *flags == 0 ? O_RDONLY : *flags;
+
+	errno = 0;
+	fl |= O_NOCTTY | O_CREAT;
+	fd = open(filename, fl, 0666);
+
+	/* Linux doesn't like O_CREAT on a directory, even though it
+	 * should be a no-op; POSIX doesn't allow O_RDWR or O_WRONLY
+	 */
+	if (fd < 0 && errno == EISDIR) {
+		fl = O_RDONLY | O_NOCTTY;
+		fd = open(filename, fl);
+	}
+	if (fd < 0) {
+		fprintf(stderr, _("%s: cannot open lock file %s"),
+				program, filename);
+		if (errno == ENOMEM || errno == EMFILE || errno == ENFILE)
+			exit(EX_OSERR);
+		if (errno == EROFS || errno == ENOSPC)
+			exit(EX_CANTCREAT);
+		exit(EX_NOINPUT);
+	}
+	*flags = fl;
+	return fd;
+}
 
 static char * strtotimeval(const char *str, struct timeval *tv)
 {
@@ -126,6 +155,7 @@ int main(int argc, char *argv[])
   int have_timeout = 0;
   int type = LOCK_EX;
   int block = 0;
+  int open_flags = 0;
   int fd = -1;
   int opt, ix;
   int do_close = 0;
@@ -208,20 +238,7 @@ int main(int argc, char *argv[])
     }
 
     filename = argv[optind];
-    fd = open(filename, O_RDONLY|O_NOCTTY|O_CREAT, 0666);
-    /* Linux doesn't like O_CREAT on a directory, even though it should be a
-       no-op */
-    if (fd < 0 && errno == EISDIR)
-        fd = open(filename, O_RDONLY|O_NOCTTY);
-
-    if ( fd < 0 ) {
-      err = errno;
-      fprintf(stderr, _("%s: cannot open lock file %s: %s\n"),
-	      program, argv[optind], strerror(err));
-      exit((err == ENOMEM||err == EMFILE||err == ENFILE) ? EX_OSERR :
-	   (err == EROFS||err == ENOSPC) ? EX_CANTCREAT :
-	   EX_NOINPUT);
-    }
+    fd = open_file(filename, &open_flags);
 
   } else if (optind < argc) {
     /* Use provided file descriptor */
@@ -268,6 +285,25 @@ int main(int argc, char *argv[])
       if ( timeout_expired )
 	exit(1);		/* -w option set and failed to lock */
       continue;			/* otherwise try again */
+
+    case EIO:
+    case EBADF:		/* since Linux 3.4 (commit 55725513) */
+	/* Probably NFSv4 where flock() is emulated by fcntl().
+	 * Let's try to reopen in read-write mode.
+	 */
+      if (!(open_flags & O_RDWR) &&
+	    type != LOCK_SH &&
+	    filename &&
+	    access(filename, R_OK | W_OK) == 0) {
+
+	close(fd);
+	open_flags = O_RDWR;
+	fd = open_file(filename, &open_flags);
+
+	if (open_flags & O_RDWR)
+	  break;
+      }
+      /* go through */
     default:			/* Other errors */
       if ( filename )
 	fprintf(stderr, "%s: %s: %s\n", program, filename, strerror(err));
