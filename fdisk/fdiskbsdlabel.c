@@ -74,7 +74,7 @@ static void xbsd_list_types (void);
 static u_short xbsd_dkcksum (struct xbsd_disklabel *lp);
 static int xbsd_initlabel  (struct partition *p, struct xbsd_disklabel *d,
 			    int pindex);
-static int xbsd_readlabel  (struct partition *p, struct xbsd_disklabel *d);
+static int xbsd_readlabel  (struct partition *p, struct xbsd_disklabel *d, int tryonly);
 static int xbsd_writelabel (struct partition *p, struct xbsd_disklabel *d);
 static void sync_disks (void);
 
@@ -109,14 +109,14 @@ static struct xbsd_disklabel xbsd_dlabel;
  */
 int
 check_osf_label(void) {
-	if (xbsd_readlabel (NULL, &xbsd_dlabel) == 0)
+	if (xbsd_readlabel (NULL, &xbsd_dlabel, 1) == 0)
 		return 0;
 	return 1;
 }
 
 int
 btrydev (char * dev) {
-	if (xbsd_readlabel (NULL, &xbsd_dlabel) == 0)
+	if (xbsd_readlabel (NULL, &xbsd_dlabel, 1) == 0)
 		return -1;
 	printf(_("\nBSD label for device: %s\n"), dev);
 	xbsd_print_disklabel (0);
@@ -178,7 +178,7 @@ bselect (void) {
       }
       printf (_("Reading disklabel of %s at sector %d.\n"),
 	      partname(disk_device, t+1, 0), ss + BSD_LABELSECTOR);
-      if (xbsd_readlabel (xbsd_part, &xbsd_dlabel) == 0)
+      if (xbsd_readlabel (xbsd_part, &xbsd_dlabel, 0) == 0)
 	if (xbsd_create_disklabel () == 0)
 	  return;
       break;
@@ -192,7 +192,7 @@ bselect (void) {
 
 #elif defined (__alpha__)
 
-  if (xbsd_readlabel (NULL, &xbsd_dlabel) == 0)
+  if (xbsd_readlabel (NULL, &xbsd_dlabel, 0) == 0)
     if (xbsd_create_disklabel () == 0)
       exit ( EXIT_SUCCESS );
 
@@ -723,7 +723,7 @@ xbsd_initlabel (struct partition *p, struct xbsd_disklabel *d, int pindex) {
  * If it has the right magic, return 1.
  */
 static int
-xbsd_readlabel (struct partition *p, struct xbsd_disklabel *d)
+xbsd_readlabel (struct partition *p, struct xbsd_disklabel *d, int tryonly)
 {
 	int t, sector;
 
@@ -734,10 +734,16 @@ xbsd_readlabel (struct partition *p, struct xbsd_disklabel *d)
 	sector = 0;
 #endif
 
-	if (lseek (fd, (off_t) sector * SECTOR_SIZE, SEEK_SET) == -1)
+	if (lseek (fd, (off_t) sector * SECTOR_SIZE, SEEK_SET) == -1) {
+		if (tryonly)
+			return 0;
 		fatal (unable_to_seek);
-	if (BSD_BBSIZE != read (fd, disklabelbuffer, BSD_BBSIZE))
+	}
+	if (BSD_BBSIZE != read (fd, disklabelbuffer, BSD_BBSIZE)) {
+		if (tryonly)
+			return 0;
 		fatal (unable_to_read);
+	}
 
 	memmove (d,
 	         &disklabelbuffer[BSD_LABELSECTOR * SECTOR_SIZE + BSD_LABELOFFSET],
