@@ -518,11 +518,15 @@ umount_file (char *arg) {
 		return 0;
 	}
 
-	file = canonicalize(arg); /* mtab paths are canonicalized */
 	if (verbose > 1)
-		printf(_("Trying to umount %s\n"), file);
+		printf(_("Trying to umount %s\n"), arg);
 
-	mc = getmntdirbackward(file, NULL);
+	mc = getmntdirbackward(arg, NULL);
+	if (!mc) {
+		file = canonicalize(arg);
+		mc = getmntdirbackward(file, NULL);
+	} else
+		file = arg;
 	if (!mc) {
 		mc = getmntdevbackward(file, NULL);
 		if (mc) {
