@@ -22,6 +22,7 @@
 #include "fsprobe.h"
 #include "pathnames.h"
 #include "swapheader.h"
+#include "canonicalize.h"
 
 #define PATH_MKSWAP	"/sbin/mkswap"
 
@@ -173,11 +174,12 @@ read_proc_swaps(void) {
 			break;
 		swapFiles = q;
 
-		swapFiles[numSwaps++] = strdup(line);
+		swapFiles[numSwaps++] = canonicalize_path(line);
 	}
 	fclose(swaps);
 }
 
+/* note that swapFiles are always canonicalized */
 static int
 is_in_proc_swaps(const char *fname) {
 	int i;
