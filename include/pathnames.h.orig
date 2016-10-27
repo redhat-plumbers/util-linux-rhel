@@ -105,9 +105,6 @@
 #define _PATH_DEV_LOOP		"/dev/loop"
 #define _PATH_DEV_TTY		"/dev/tty"
 
-#define _PATH_DEV_DM		"/dev/mapper"
-#define _PATH_DEV_MPATH		"/dev/mpath"
-
 /* udev paths */
 #define _PATH_DEV_BYLABEL	"/dev/disk/by-label"
 #define _PATH_DEV_BYUUID	"/dev/disk/by-uuid"

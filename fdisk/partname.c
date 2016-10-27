@@ -31,9 +31,16 @@ partname(char *dev, int pno, int lth) {
 	/* udev names partitions by appending -partN
 	   e.g. ata-SAMSUNG_SV8004H_0357J1FT712448-part1 */
 	if ((strncmp(dev, _PATH_DEV_BYID, strlen(_PATH_DEV_BYID)) == 0) ||
-	     strncmp(dev, _PATH_DEV_BYPATH, strlen(_PATH_DEV_BYPATH)) == 0) {
-	       p = "-part";
-	}
+	     strncmp(dev, _PATH_DEV_BYPATH, strlen(_PATH_DEV_BYPATH)) == 0)
+		p = "-part";
+
+	/* /dev/mapper and /dev/mpath usually use "p<N>"
+	 * (note that this is not a strict rule, the suffix is possible to define
+	 *  on kpartx command line. This code follows usual behavior.)
+	 */
+	else if (strncmp(dev, _PATH_DEV_DM, strlen(_PATH_DEV_DM)) == 0 ||
+		 strncmp(dev, _PATH_DEV_MPATH, strlen(_PATH_DEV_MPATH)) == 0)
+		p = "p";
 
 	wp = strlen(p);
 
