@@ -881,6 +881,28 @@ find_unused_loop_device (void) {
 #include <getopt.h>
 #include <stdarg.h>
 
+
+static void warn_size(const char *filename, uint64_t size)
+{
+	struct stat st;
+
+	if (!size) {
+		if (stat(filename, &st))
+			return;
+		size = st.st_size;
+	}
+
+	if (size < 512)
+		warnx(_("%s: warning: file smaller than 512 bytes, the loop device "
+			"maybe be useless or invisible for system tools."),
+			filename);
+	else if (size % 512)
+		warnx(_("%s: warning: file does not fit into a 512-byte sector "
+		        "the end of the file will be ignored."),
+			filename);
+}
+
+
 static void
 usage(FILE *f) {
 	fprintf(f, _("\nUsage:\n"
@@ -1078,6 +1100,7 @@ main(int argc, char **argv) {
 					printf(_("Loop device is %s\n"), device);
 				if (showdev && find)
 					printf("%s\n", device);
+				warn_size(file, sizelimit);
 			}
 		}
 	}
