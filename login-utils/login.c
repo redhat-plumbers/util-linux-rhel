@@ -361,6 +361,25 @@ get_pam_username(pam_handle_t *pamh, char **name)
 }
 #endif
 
+#ifdef HAVE_SECURITY_PAM_MISC_H
+static const char *loginpam_get_prompt()
+{
+	char *prompt, *dflt_prompt = _("login: ");
+	size_t sz;
+
+	if (!*thishost)
+		return dflt_prompt;
+
+	sz = strlen(thishost) + 1 + strlen(dflt_prompt) + 1;
+	prompt = malloc(sz);
+	if (!prompt)
+		return dflt_prompt;
+
+	snprintf(prompt, sz, "%s %s", thishost, dflt_prompt);
+	return prompt;
+}
+#endif
+
 /*
  * We need to check effective UID/GID. For example $HOME could be on root
  * squashed NFS or on NFS with UID mapping and access(2) uses real UID/GID.
@@ -601,7 +620,7 @@ main(int argc, char **argv)
      * PAM doesn't have an interface to specify the "Password: " string
      * (yet).
      */
-    retcode = pam_set_item(pamh, PAM_USER_PROMPT, _("login: "));
+    retcode = pam_set_item(pamh, PAM_USER_PROMPT, loginpam_get_prompt());
     PAM_FAIL_CHECK;
 
 #if 0
