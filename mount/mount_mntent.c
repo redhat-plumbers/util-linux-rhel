@@ -72,7 +72,14 @@ static char *
 unmangle(char *s) {
 	char *ret, *ss, *sp;
 
+	if (!s)
+		return NULL;
+
 	ss = skip_nonspaces(s);
+
+	if (ss == s)
+		return NULL;	/* empty string */
+
 	ret = sp = xmalloc(ss-s+1);
 	while(s != ss) {
 		if (*s == '\\' && isoctal(s[1]) && isoctal(s[2]) && isoctal(s[3])) {
@@ -128,7 +135,7 @@ my_addmntent (mntFILE *mfp, struct my_mntent *mnt) {
 	m1 = mangle(mnt->mnt_fsname);
 	m2 = mangle(mnt->mnt_dir);
 	m3 = mangle(mnt->mnt_type);
-	m4 = mangle(mnt->mnt_opts);
+	m4 = mnt->mnt_opts ? mangle(mnt->mnt_opts) : "rw";
 
 	res = fprintf (mfp->mntent_fp, "%s %s %s %s %d %d\n",
 		       m1, m2, m3, m4, mnt->mnt_freq, mnt->mnt_passno);
@@ -136,7 +143,8 @@ my_addmntent (mntFILE *mfp, struct my_mntent *mnt) {
 	free(m1);
 	free(m2);
 	free(m3);
-	free(m4);
+	if (mnt->mnt_opts)
+		free(m4);
 	return (res < 0) ? 1 : 0;
 }
 
@@ -189,6 +197,9 @@ my_getmntent (mntFILE *mfp) {
 	me.mnt_opts = unmangle(s);
 	s = skip_nonspaces(s);
 	s = skip_spaces(s);
+
+	if (!me.mnt_fsname || !me.mnt_dir || !me.mnt_type)
+		goto err;
 
 	if (isdigit(*s)) {
 		me.mnt_freq = atoi(s);

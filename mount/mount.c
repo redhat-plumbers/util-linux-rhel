@@ -1104,7 +1104,8 @@ is_mounted_same_loopfile(const char *node0, const char *loopfile, unsigned long 
 			res = loopfile_used_with((char *) mnt->m.mnt_fsname,
 					loopfile, offset);
 
-		else if ((p = strstr(mnt->m.mnt_opts, "loop="))) {
+		else if (mnt->m.mnt_opts &&
+			 (p = strstr(mnt->m.mnt_opts, "loop="))) {
 			char *dev = xstrdup(p+5);
 			if ((p = strchr(dev, ',')))
 				*p = '\0';
