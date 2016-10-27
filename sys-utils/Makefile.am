@@ -10,12 +10,12 @@ dist_man_MANS = flock.1 ipcrm.1 ipcs.1 ipcmk.1 renice.1 setsid.1 \
 
 if LINUX
 bin_PROGRAMS += dmesg
-sbin_PROGRAMS += ctrlaltdel fsfreeze
+sbin_PROGRAMS += ctrlaltdel fsfreeze fstrim
 usrbin_exec_PROGRAMS += cytune setarch lscpu
 usrsbin_exec_PROGRAMS += ldattach tunelp rtcwake
 
 dist_man_MANS += dmesg.1 ctrlaltdel.8 cytune.8 setarch.8 \
-		ldattach.8 lscpu.1 tunelp.8 rtcwake.8 fsfreeze.8
+		ldattach.8 lscpu.1 tunelp.8 rtcwake.8 fsfreeze.8 fstrim.8
 endif
 
 lscpu_SOURCES = lscpu.c \
@@ -27,6 +27,7 @@ lscpu_SOURCES = lscpu.c \
 
 cytune_SOURCES = cytune.c cyclades.h
 tunelp_SOURCES = tunelp.c lp.h
+fstrim_SOURCES = fstrim.c $(top_srcdir)/lib/strutils.c
 
 info_TEXINFOS = ipc.texi
 
