@@ -27,9 +27,9 @@ uuidd \- UUID generation daemon
 The
 .B uuidd
 daemon is used by the UUID library to generate
-universally unique identifiers (UUIDs), especially time-based UUID's
+universally unique identifiers (UUIDs), especially time-based UUIDs,
 in a secure and guaranteed-unique fashion, even in the face of large
-numbers of threads trying to grab UUID's running on different CPU's.
+numbers of threads running on different CPUs trying to grab UUIDs.
 .SH OPTIONS
 .TP
 .B \-d
@@ -38,13 +38,13 @@ Run
 in debugging mode.  This prevents uuidd from running as a daemon.
 .TP
 .B \-k
-If a currently uuidd daemon is running, kill it.
+If currently a uuidd daemon is running, kill it.
 .TP
 .BI \-n " number"
 When issuing a test request to a running uuidd, request a bulk response
 of
 .I number
-UUID's.
+UUIDs.
 .TP
 .BI \-p  " pidfile"
 Specify the pathname where the pid file should be written.  By default,
@@ -68,6 +68,9 @@ request it to return a time-based UUID.
 Specify a timeout for uuidd.  If specified, then uuidd will exit after
 .I timeout
 seconds of inactivity.
+.TP
+.BI \-q
+Turn on quiet flag.
 .SH AUTHOR
 The
 .B uuidd
@@ -76,5 +79,5 @@ daemon  was written by Theodore Ts'o <tytso@mit.edu>.
 uuidd is part of the util-linux-ng package and is available from
 ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/.
 .SH "SEE ALSO"
-.BR libuuid (3),
+.BR uuid (3),
 .BR uuidgen (1)

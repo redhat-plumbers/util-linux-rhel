@@ -213,7 +213,7 @@ static int call_daemon(const char *socket_path, int op, char *buf,
 			*num = -1;
 	}
 	if ((ret > 0) && (op == 5)) {
-		if (*num >= (int) sizeof(int))
+		if (reply_len >= (int) sizeof(int))
 			memcpy(buf, num, sizeof(int));
 		else
 			*num = -1;
@@ -308,7 +308,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
 	}
 	(void) umask(save_umask);
 
-	if (listen(s, 5) < 0) {
+	if (listen(s, SOMAXCONN) < 0) {
 		if (!quiet)
 			fprintf(stderr, _("Couldn't listen on unix "
 					  "socket %s: %s\n"), socket_path,
@@ -372,7 +372,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
 			break;
 		case UUIDD_OP_TIME_UUID:
 			num = 1;
-			uuid__generate_time(uu, &num);
+			__uuid_generate_time(uu, &num);
 			if (debug) {
 				uuid_unparse(uu, str);
 				printf(_("Generated time UUID: %s\n"), str);
@@ -382,7 +382,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
 			break;
 		case UUIDD_OP_RANDOM_UUID:
 			num = 1;
-			uuid__generate_random(uu, &num);
+			__uuid_generate_random(uu, &num);
 			if (debug) {
 				uuid_unparse(uu, str);
 				printf(_("Generated random UUID: %s\n"), str);
@@ -391,11 +391,11 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
 			reply_len = sizeof(uu);
 			break;
 		case UUIDD_OP_BULK_TIME_UUID:
-			uuid__generate_time(uu, &num);
+			__uuid_generate_time(uu, &num);
 			if (debug) {
 				uuid_unparse(uu, str);
 				printf(_("Generated time UUID %s and %d "
-					 "following\n"), str, num);
+					 "following\n"), str, num - 1);
 			}
 			memcpy(reply_buf, uu, sizeof(uu));
 			reply_len = sizeof(uu);
@@ -409,7 +409,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
 				num = 1000;
 			if (num*16 > (int) (sizeof(reply_buf)-sizeof(num)))
 				num = (sizeof(reply_buf)-sizeof(num)) / 16;
-			uuid__generate_random((unsigned char *) reply_buf +
+			__uuid_generate_random((unsigned char *) reply_buf +
 					      sizeof(num), &num);
 			if (debug) {
 				printf(_("Generated %d UUID's:\n"), num);
@@ -464,7 +464,7 @@ int main(int argc, char **argv)
 			break;
 		case 'n':
 			num = strtol(optarg, &tmp, 0);
-			if ((num < 0) || *tmp) {
+			if ((num < 1) || *tmp) {
 				fprintf(stderr, _("Bad number: %s\n"), optarg);
 				exit(1);
 			}
@@ -531,7 +531,7 @@ int main(int argc, char **argv)
 
 			uuid_unparse((unsigned char *) buf, str);
 
-			printf(_("%s and subsequent %d UUID's\n"), str, num);
+			printf(_("%s and subsequent %d UUID's\n"), str, num - 1);
 		} else {
 			printf(_("List of UUID's:\n"));
 			cp = buf + 4;
