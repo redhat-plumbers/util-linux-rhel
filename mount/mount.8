@@ -378,6 +378,11 @@ or shortoption
 .RE
 This will cause the contents which previously appeared under olddir to be
 accessed under newdir.  The physical location of the files is not changed.
+
+Note also that moving a mount residing under a shared mount is invalid and
+unsupported (in the other words the parent of the \fIolddir\fR has to use
+private propagation flag).  See /proc/self/mountinfo for the current
+propagation flags.
 .RE
 
 .B The shared subtrees operations.
