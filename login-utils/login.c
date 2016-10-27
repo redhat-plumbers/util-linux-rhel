@@ -943,11 +943,20 @@ Michael Riepe <michael@stud.uni-hannover.de>
 
 	/* If we can't find a pre-existing entry by pid, try by line.
 	   BSD network daemons may rely on this. (anonymous) */
-	if (utp == NULL) {
+	if (utp == NULL && tty_name) {
 	     setutent();
 	     ut.ut_type = LOGIN_PROCESS;
 	     strncpy(ut.ut_line, tty_name, sizeof(ut.ut_line));
 	     utp = getutline(&ut);
+	}
+
+	/* If we can't find a pre-existing entry by pid and line, try it by id.
+	 * Very stupid telnetd deamons don't set up utmp at all (kzak) */
+	if (utp == NULL && tty_number) {
+	     setutent();
+	     ut.ut_type = DEAD_PROCESS;
+	     strncpy(ut.ut_id, tty_number, sizeof(ut.ut_id));
+	     utp = getutid(&ut);
 	}
 
 	if (utp) {
