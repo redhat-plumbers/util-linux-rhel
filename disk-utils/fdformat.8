@@ -45,6 +45,10 @@ autodetected earlier.  In this case, use
 .BR setfdprm (8)
 to load the disk parameters.
 
+For ATAPI IDE floppy driver (also known as LS-120 drives or "Superdisk"
+drives) you have to use the
+.BR floppy (8).
+
 .SH OPTIONS
 .TP
 .B \-n
@@ -54,7 +58,8 @@ after the format.
 .BR fd (4),
 .BR setfdprm (8),
 .BR mkfs (8),
-.BR emkfs (8)
+.BR emkfs (8),
+.BR floppy (8)
 .SH AUTHOR
 Werner Almesberger (almesber@nessie.cs.id.ethz.ch)
 .SH AVAILABILITY
