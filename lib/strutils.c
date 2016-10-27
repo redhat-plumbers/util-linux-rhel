@@ -134,6 +134,16 @@ err:
 	return -1;
 }
 
+int isdigit_string(const char *str)
+{
+	const char *p;
+
+	for (p = str; p && *p && isdigit((unsigned char) *p); p++);
+
+	return p && p > str && !*p;
+}
+
+
 #ifndef HAVE_STRNLEN
 size_t strnlen(const char *s, size_t maxlen)
 {
