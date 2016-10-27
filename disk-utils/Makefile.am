@@ -13,7 +13,7 @@ fsck_minix_SOURCES = fsck.minix.c minix.h
 mkfs_minix_SOURCES = mkfs.minix.c minix.h $(utils_common)
 mkfs_bfs_SOURCES = mkfs.bfs.c $(utils_common)
 
-mkswap_SOURCES = mkswap.c $(utils_common) ../lib/wholedisk.c
+mkswap_SOURCES = mkswap.c $(utils_common) ../lib/wholedisk.c ../lib/sysfs.c ../lib/at.c
 mkswap_LDADD =
 mkswap_CFLAGS = $(AM_CFLAGS)
 

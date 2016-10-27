@@ -638,6 +638,50 @@ err:
     return -1;
 }
 
+
+/*
+ * Return 0 or 1, or < 0 in case of error
+ */
+int sysfs_devno_is_wholedisk(dev_t devno)
+{
+	dev_t disk;
+
+	if (sysfs_devno_to_wholedisk(devno, NULL, 0, &disk) != 0)
+		return -1;
+
+	return devno == disk;
+}
+
+
+/*
+ * Returns 1 if the device is private LVM device.
+ */
+int sysfs_devno_is_lvm_private(dev_t devno)
+{
+	struct sysfs_cxt cxt = UL_SYSFSCXT_EMPTY;
+	char *uuid = NULL;
+	int rc = 0;
+
+	if (sysfs_init(&cxt, devno, NULL) != 0)
+		return 0;
+
+	uuid = sysfs_strdup(&cxt, "dm/uuid");
+
+	/* Private LVM devices use "LVM-<uuid>-<name>" uuid format (important
+	 * is the "LVM" prefix and "-<name>" postfix).
+	 */
+	if (uuid && strncmp(uuid, "LVM-", 4) == 0) {
+		char *p = strrchr(uuid + 4, '-');
+
+		if (p && *(p + 1))
+			rc = 1;
+	}
+
+	sysfs_deinit(&cxt);
+	free(uuid);
+	return rc;
+}
+
 #ifdef TEST_PROGRAM_SYSFS
 #include <errno.h>
 #include <err.h>

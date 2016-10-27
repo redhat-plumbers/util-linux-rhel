@@ -4,6 +4,7 @@
 #include <ctype.h>
 
 #include "blkdev.h"
+#include "sysfs.h"
 #include "wholedisk.h"
 
 int is_whole_disk_fd(int fd, const char *name)
@@ -30,16 +31,13 @@ int is_whole_disk_fd(int fd, const char *name)
 
 int is_whole_disk(const char *name)
 {
-	int fd = -1, res = 0;
-#ifdef HDIO_GETGEO
-	fd = open(name, O_RDONLY);
-	if (fd != -1)
-#endif
-		res = is_whole_disk_fd(fd, name);
+	dev_t devno = sysfs_devname_to_devno(name, NULL);
 
-	if (fd != -1)
-		close(fd);
-	return res;
+	if (sysfs_devno_is_lvm_private(devno) ||
+	    sysfs_devno_is_wholedisk(devno) <= 0)
+		return 0;
+
+	return 1;
 }
 
 #ifdef TEST_PROGRAM
