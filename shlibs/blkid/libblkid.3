@@ -24,7 +24,7 @@ A common use is to allow use of LABEL= and UUID= tags instead of hard-coding
 specific block device names into configuration files.
 .P
 Block device information is normally kept in a cache file
-.I /etc/blkid.tab
+.I /etc/blkid/blkid.tab
 and is verified to still be valid before being returned to the user
 (if the user has read permission on the raw block device, otherwise not).
 The cache file also allows unprivileged users (normally anyone other
@@ -59,7 +59,7 @@ symlink does not match with LABEL or UUID on the device. Default is "yes".
 .I CACHE_FILE=<path>
 Overrides the standard location of the cache file. This setting can be
 overridden by the environment variable BLKID_FILE. Default is
-.I /etc/blkid.tab.
+.I /etc/blkid/blkid.tab.
 .TP
 .I EVALUATE=<methods>
 Defines LABEL and UUID evaluation method(s). Currently, the libblkid library
@@ -77,7 +77,7 @@ from Ted Ts'o.  The library was subsequently heavily modified by Ted Ts'o.
 The low-level probing code was rewritten by Karel Zak.
 .SH FILES
 .TP 18
-.I /etc/blkid.tab
+.I /etc/blkid/blkid.tab
 caches data extracted from each recognized block device
 .TP
 .I /etc/blkid.conf

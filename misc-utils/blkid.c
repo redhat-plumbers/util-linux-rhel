@@ -58,7 +58,7 @@ static void usage(int error)
 		"        [-t <token>] [-w <file>] [dev ...]\n\n"
 		"  %1$s -p [-O <offset>] [-S <size>] [-o format] <dev> [dev ...]\n\n"
 		"Options:\n"
-		"  -c <file>   cache file (default: /etc/blkid.tab, /dev/null = none)\n"
+		"  -c <file>   cache file (default: /etc/blkid/blkid.tab, /dev/null = none)\n"
 		"  -h          print this usage message and exit\n"
 		"  -g          garbage collect the blkid cache\n"
 		"  -o <format> output format; can be one of:\n"
