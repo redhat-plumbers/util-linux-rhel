@@ -706,7 +706,7 @@ termio_init(tp, speed, op)
     /* flush input and output queues, important for modems! */
     (void) tcflush(0, TCIOFLUSH);
 
-    tp->c_cflag = CS8 | HUPCL | CREAD;
+    tp->c_cflag = CS8 | HUPCL | CREAD | (tp->c_cflag & CLOCAL);
     cfsetispeed(tp, speed);
     cfsetospeed(tp, speed);
     if (op->flags & F_LOCAL) {
