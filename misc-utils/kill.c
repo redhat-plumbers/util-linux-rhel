@@ -49,6 +49,7 @@
 #include <ctype.h>		/* for isdigit() */
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "c.h"
 #include "kill.h"
@@ -260,8 +261,9 @@ int main (int argc, char *argv[])
 	the rest of the arguments should be process ids and names.
 	kill them.  */
     for (errors = 0; (arg = *argv) != NULL; argv++) {
+	errno = 0;
 	pid = strtol (arg, &ep, 10);
-	if (! *ep)
+	if (errno == 0 && ep && *ep == '\0' && arg < ep)
 	    errors += kill_verbose (arg, pid, numsig);
 	else {
 	    pids = get_pids (arg, check_all);
