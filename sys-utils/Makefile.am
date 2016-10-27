@@ -8,6 +8,9 @@ usrsbin_exec_PROGRAMS = readprofile
 dist_man_MANS = flock.1 ipcrm.1 ipcs.1 ipcmk.1 renice.1 setsid.1 \
 		readprofile.1
 
+ipcmk_SOURCES = ipcmk.c \
+	$(top_srcdir)/lib/strutils.c
+
 if LINUX
 bin_PROGRAMS += dmesg
 sbin_PROGRAMS += ctrlaltdel fsfreeze fstrim

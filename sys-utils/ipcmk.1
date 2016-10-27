@@ -22,8 +22,12 @@ allows you to create shared memory segments, message queues or semaphore arrays.
 Resources may be specified as follows:
 .TP
 .BI \-M " size"
-shared memory segment of size
+shared memory segment of
 .I size
+bytes
+
+The \fIsize\fR argument may be followed by the multiplicative suffixes KiB (=1024), MiB (=1024*1024), and so on for GiB, etc. (the
+"iB" is optional, e.g., "K" has the same meaning as "KiB") or the suffixes KB (=1000), MB (=1000*1000), and so on for GB, etc.
 .TP
 .BI \-S " nsems"
 semaphore array with

@@ -34,6 +34,7 @@
 #include <sys/msg.h>
 
 #include "nls.h"
+#include "strutils.h"
 
 static const char *progname;
 
@@ -111,14 +112,14 @@ int main(int argc, char **argv)
 	while((opt = getopt(argc, argv, "hM:QS:p:")) != -1) {
 		switch(opt) {
 		case 'M':
-			size = atoi(optarg);
+			size = strtosize_or_err(optarg, _("failed to parse size"));
 			doShm = 1;
 			break;
 		case 'Q':
 			doMsg = 1;
 			break;
 		case 'S':
-			nsems = atoi(optarg);
+			nsems = strtos32_or_err(optarg, _("failed to parse elements"));
 			doSem = 1;
 			break;
 		case 'p':
