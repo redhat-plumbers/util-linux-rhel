@@ -53,7 +53,8 @@ contains descriptive information about the various file systems.
 is only read by programs, and not written; it is the duty of the system
 administrator to properly create and maintain this file.  Each filesystem
 is described on a separate line; fields on each line are separated by tabs
-or spaces.  Lines starting with '#' are comments.  The order of records in
+or spaces.  Lines starting with '#' are comments. blank lines are ignored.  The
+order of records in
 .B fstab
 is important because
 .BR fsck (8),
