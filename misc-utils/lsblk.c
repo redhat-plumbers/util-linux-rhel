@@ -714,11 +714,13 @@ static void set_tt_data(struct blkdev_cxt *cxt, int col, int id, struct tt_line 
 	};
 }
 
-static void print_device(struct blkdev_cxt *cxt, struct tt_line *tt_parent)
+static void fill_table_line(struct blkdev_cxt *cxt, struct tt_line *tt_parent)
 {
 	int i;
 
 	cxt->tt_line = tt_add_line(lsblk->tt, tt_parent);
+	if (!cxt->tt_line)
+		return;
 
 	for (i = 0; i < ncolumns; i++)
 		set_tt_data(cxt, i, get_column_id(i), cxt->tt_line);
@@ -839,7 +841,7 @@ static int list_partitions(struct blkdev_cxt *wholedisk_cxt, struct blkdev_cxt *
 				goto next;
 
 			wholedisk_cxt->parent = &part_cxt;
-			print_device(&part_cxt, parent_cxt ? parent_cxt->tt_line : NULL);
+			fill_table_line(&part_cxt, parent_cxt ? parent_cxt->tt_line : NULL);
 			if (!lsblk->nodeps)
 				process_blkdev(wholedisk_cxt, &part_cxt, 0, NULL);
 		} else {
@@ -853,7 +855,7 @@ static int list_partitions(struct blkdev_cxt *wholedisk_cxt, struct blkdev_cxt *
 				goto next;
 			/* Print whole disk only once */
 			if (r)
-				print_device(wholedisk_cxt, parent_cxt ? parent_cxt->tt_line : NULL);
+				fill_table_line(wholedisk_cxt, parent_cxt ? parent_cxt->tt_line : NULL);
 			if (!lsblk->nodeps)
 				process_blkdev(&part_cxt, wholedisk_cxt, 0, NULL);
 		}
@@ -926,9 +928,11 @@ static int list_deps(struct blkdev_cxt *cxt)
 			    process_blkdev(&dep, cxt, 1, d->d_name);
 		}
 		/* The dependency is a whole device. */
-		else if (!set_cxt(&dep, cxt, NULL, d->d_name))
-			process_blkdev(&dep, cxt, 1, NULL);
-
+		else if (!set_cxt(&dep, cxt, NULL, d->d_name)) {
+			/* For inverse tree we don't want to show partitions
+			 * if the dependence is pn whle-disk */
+			process_blkdev(&dep, cxt, lsblk->inverse ? 0 : 1, NULL); 
+		}
 		reset_blkdev_cxt(&dep);
 	}
 	closedir(dir);
@@ -940,9 +944,10 @@ static int process_blkdev(struct blkdev_cxt *cxt, struct blkdev_cxt *parent,
 			  int do_partitions, const char *part_name)
 {
 	if (do_partitions && cxt->npartitions)
-		return list_partitions(cxt, parent, part_name);
+		list_partitions(cxt, parent, part_name);                /* partitoins + whole-disk */
+	else
+		fill_table_line(cxt, parent ? parent->tt_line : NULL); /* whole-disk only */
 
-	print_device(cxt, parent ? parent->tt_line : NULL);
 	return list_deps(cxt);
 }
 
