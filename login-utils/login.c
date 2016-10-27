@@ -1431,7 +1431,7 @@ dolastlog(int quiet) {
     struct lastlog ll;
     int fd;
 
-    if ((fd = open(_PATH_LASTLOG, O_RDWR, 0)) >= 0) {
+    if ((fd = open(_PATH_LASTLOG, O_RDWR|O_CREAT, 0)) >= 0) {
 	lseek(fd, (off_t)pwd->pw_uid * sizeof(ll), SEEK_SET);
 	if (!quiet) {
 	    if (read(fd, (char *)&ll, sizeof(ll)) == sizeof(ll) &&
