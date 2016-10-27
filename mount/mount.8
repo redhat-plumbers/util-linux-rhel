@@ -581,6 +581,15 @@ was known as
 Note, the real list of all supported filesystems depends on your
 kernel.
 
+The programs
+.B mount
+and
+.B umount
+support filesystem subtypes.  The subtype is defined by '.subtype' suffix.  For
+example  'fuse.sshfs'. It's recommended to use subtype notation rather than add
+any prefix to the mount source (for example 'sshfs#example.com' is
+depreacated).
+
 For most types all the
 .B mount
 program has to do is issue a simple
@@ -2612,10 +2621,13 @@ The syntax of external mount helpers is:
 .RB [ \-sfnv ]
 .RB [ \-o
 .IR options ]
+.RB [ \-t
+.IR type.subtype ]
 .RE
 
-where the <suffix> is filesystem type and \-sfnvo options have same meaning like
-standard mount options.
+where the <type> is filesystem type and \-sfnvo options have same meaning like
+standard mount options. The \-t option is used  for filesystems with subtypes
+support (for example /sbin/mount.fuse -t fuse.sshfs).
 
 .SH FILES
 .TP 18n
