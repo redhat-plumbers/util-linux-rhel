@@ -1156,7 +1156,7 @@ loop_check(const char **spec, const char **type, int *flags,
       if (verbose)
 	printf(_("mount: skipping the setup of a loop device\n"));
     } else {
-      int loop_opts = SETLOOP_AUTOCLEAR; /* always attempt autoclear */
+      int loop_opts = 0;	/* disabled for RHEL: SETLOOP_AUTOCLEAR; */
       int res;
 
       if (*flags & MS_RDONLY)
