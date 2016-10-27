@@ -54,6 +54,9 @@ Print blocksize in bytes.
 Set blocksize to
 .I N
 bytes.
+Note that the block size is specific to the current file descriptor opening the
+block device, so the change of block size only persists for as long as blockdev
+has the device open, and is lost once blockdev exits.
 .TP
 .B \--getsize
 Print device size in sectors (BLKGETSIZE). Deprecated in favor of the
