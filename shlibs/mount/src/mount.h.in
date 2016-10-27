@@ -1,0 +1,366 @@
+/*
+ * mount.h - libmount API
+ *
+ * Copyright (C) 2008-2009 Karel Zak <kzak@redhat.com>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
+ */
+
+#ifndef _LIBMOUNT_MOUNT_H
+#define _LIBMOUNT_MOUNT_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef USE_UNSTABLE_LIBMOUNT_API
+# warning libmount API is not stable yet!
+#endif
+
+#include <stdio.h>
+#include <mntent.h>
+#include <sys/types.h>
+
+#define LIBMOUNT_VERSION   "@LIBMOUNT_VERSION@"
+
+/**
+ * mnt_cache:
+ *
+ * Stores canonicalized paths and evaluated tags
+ */
+typedef struct _mnt_cache mnt_cache;
+
+/**
+ * mnt_lock:
+ *
+ * Stores information about locked file (e.g. /etc/mtab)
+ */
+typedef struct _mnt_lock mnt_lock;
+
+/**
+ * mnt_iter:
+ *
+ * Generic iterator (stores state about lists)
+ */
+typedef struct _mnt_iter mnt_iter;
+
+/**
+ * mnt_optmap:
+ *
+ * Mount options description (map)
+ */
+struct mnt_optmap
+{
+	const char	*name;	 /* option name[=%<type>] (e.g. "loop[=%s]") */
+	int		id;	 /* option ID or MS_* flags (e.g MS_RDONLY) */
+	int		mask;	 /* MNT_{NOMTAB,INVERT,...} mask */
+};
+
+/*
+ * mount options map masks
+ */
+#define MNT_INVERT	(1 << 1) /* invert the mountflag */
+#define MNT_NOMTAB	(1 << 2) /* skip in the mtab option string */
+
+/**
+ * mnt_fs:
+ *
+ * Parsed fstab/mtab/mountinfo entry
+ */
+typedef struct _mnt_fs mnt_fs;
+
+/**
+ * mnt_tab:
+ *
+ * List of mnt_fs entries (parsed fstab/mtab/mountinfo)
+ */
+typedef struct _mnt_tab mnt_tab;
+
+/* init.c */
+extern void mnt_init_debug(int mask);
+
+/* utils.c */
+extern int mnt_fstype_is_netfs(const char *type);
+extern int mnt_fstype_is_pseudofs(const char *type);
+extern int mnt_match_fstype(const char *type, const char *pattern);
+extern int mnt_match_options(const char *optstr, const char *pattern);
+extern const char *mnt_get_fstab_path(void);
+extern const char *mnt_get_mtab_path(void);
+extern int mnt_has_regular_mtab(const char **mtab, int *writable);
+
+/* cache.c */
+extern mnt_cache *mnt_new_cache(void);
+extern void mnt_free_cache(mnt_cache *cache);
+extern int mnt_cache_read_tags(mnt_cache *cache, const char *devname);
+extern int mnt_cache_device_has_tag(mnt_cache *cache, const char *devname,
+                                const char *token, const char *value);
+
+extern char *mnt_cache_find_tag_value(mnt_cache *cache,
+				const char *devname, const char *token);
+
+extern char *mnt_get_fstype(const char *devname, int *ambi, mnt_cache *cache);
+extern char *mnt_resolve_path(const char *path, mnt_cache *cache);
+extern char *mnt_resolve_tag(const char *token, const char *value, mnt_cache *cache);
+extern char *mnt_resolve_spec(const char *spec, mnt_cache *cache);
+
+/* optstr.c */
+extern int mnt_optstr_next_option(char **optstr, char **name, size_t *namesz,
+				char **value, size_t *valuesz);
+extern int mnt_optstr_append_option(char **optstr, const char *name,
+				const char *value);
+extern int mnt_optstr_prepend_option(char **optstr, const char *name,
+				const char *value);
+extern int mnt_optstr_get_option(char *optstr, const char *name,
+				char **value, size_t *valsz);
+extern int mnt_optstr_set_option(char **optstr, const char *name,
+				const char *value);
+extern int mnt_optstr_remove_option(char **optstr, const char *name);
+
+extern int mnt_split_optstr(const char *optstr,
+			    char **user, char **vfs, char **fs,
+			    int ignore_user, int ignore_vfs);
+
+extern int mnt_optstr_get_options(const char *optstr, char **subset,
+                            const struct mnt_optmap *map, int ignore);
+
+extern int mnt_optstr_get_flags(const char *optstr, unsigned long *flags,
+				const struct mnt_optmap *map);
+extern int mnt_optstr_apply_flags(char **optstr, unsigned long flags,
+                                const struct mnt_optmap *map);
+
+/* iter.c */
+enum {
+
+	MNT_ITER_FORWARD = 0,
+	MNT_ITER_BACKWARD
+};
+extern mnt_iter *mnt_new_iter(int direction);
+extern void mnt_free_iter(mnt_iter *itr);
+extern void mnt_reset_iter(mnt_iter *itr, int direction);
+extern int mnt_iter_get_direction(mnt_iter *itr);
+
+/* optmap.c */
+enum {
+	MNT_LINUX_MAP = 1,
+	MNT_USERSPACE_MAP
+};
+extern const struct mnt_optmap *mnt_get_builtin_optmap(int id);
+
+/* fs.c */
+extern mnt_fs *mnt_new_fs(void);
+extern void mnt_free_fs(mnt_fs *fs);
+extern void *mnt_fs_get_userdata(mnt_fs *fs);
+extern int mnt_fs_set_userdata(mnt_fs *fs, void *data);
+extern const char *mnt_fs_get_source(mnt_fs *fs);
+extern int mnt_fs_set_source(mnt_fs *fs, const char *source);
+extern const char *mnt_fs_get_srcpath(mnt_fs *fs);
+extern int mnt_fs_get_tag(mnt_fs *fs, const char **name, const char **value);
+extern const char *mnt_fs_get_target(mnt_fs *fs);
+extern int mnt_fs_set_target(mnt_fs *fs, const char *target);
+extern const char *mnt_fs_get_fstype(mnt_fs *fs);
+extern int mnt_fs_set_fstype(mnt_fs *fs, const char *fstype);
+
+extern char *mnt_fs_strdup_options(mnt_fs *fs);
+extern int mnt_fs_set_options(mnt_fs *fs, const char *optstr);
+
+extern int mnt_fs_get_option(mnt_fs *fs, const char *name,
+				char **value, size_t *valsz);
+
+extern int mnt_fs_append_options(mnt_fs *fs, const char *optstr);
+extern int mnt_fs_prepend_options(mnt_fs *fs, const char *optstr);
+
+extern const char *mnt_fs_get_fs_options(mnt_fs *fs);
+extern int mnt_fs_set_fs_options(mnt_fs *fs, const char *optstr);
+extern int mnt_fs_append_fs_options(mnt_fs *fs, const char *optstr);
+extern int mnt_fs_prepend_fs_options(mnt_fs *fs, const char *optstr);
+
+extern const char *mnt_fs_get_vfs_options(mnt_fs *fs);
+extern int mnt_fs_set_vfs_options(mnt_fs *fs, const char *optstr);
+extern int mnt_fs_append_vfs_options(mnt_fs *fs, const char *optstr);
+extern int mnt_fs_prepend_vfs_options(mnt_fs *fs, const char *optstr);
+
+extern const char *mnt_fs_get_userspace_options(mnt_fs *fs);
+extern int mnt_fs_set_userspace_options(mnt_fs *fs, const char *optstr);
+extern int mnt_fs_append_userspace_options(mnt_fs *fs, const char *optstr);
+extern int mnt_fs_prepend_userspace_options(mnt_fs *fs, const char *optstr);
+
+extern const char *mnt_fs_get_attributes(mnt_fs *fs);
+extern int mnt_fs_set_attributes(mnt_fs *fs, const char *optstr);
+extern int mnt_fs_get_attribute(mnt_fs *fs, const char *name,
+				char **value, size_t *valsz);
+extern int mnt_fs_append_attributes(mnt_fs *fs, const char *optstr);
+extern int mnt_fs_prepend_attributes(mnt_fs *fs, const char *optstr);
+
+extern int mnt_fs_get_freq(mnt_fs *fs);
+extern int mnt_fs_set_freq(mnt_fs *fs, int freq);
+extern int mnt_fs_get_passno(mnt_fs *fs);
+extern int mnt_fs_set_passno(mnt_fs *fs, int passno);
+extern const char *mnt_fs_get_root(mnt_fs *fs);
+extern int mnt_fs_set_root(mnt_fs *fs, const char *root);
+extern const char *mnt_fs_get_bindsrc(mnt_fs *fs);
+extern int mnt_fs_set_bindsrc(mnt_fs *fs, const char *src);
+extern int mnt_fs_get_id(mnt_fs *fs);
+extern int mnt_fs_get_parent_id(mnt_fs *fs);
+extern dev_t mnt_fs_get_devno(mnt_fs *fs);
+
+extern int mnt_fs_match_target(mnt_fs *fs, const char *target, mnt_cache *cache);
+extern int mnt_fs_match_source(mnt_fs *fs, const char *source, mnt_cache *cache);
+extern int mnt_fs_match_fstype(mnt_fs *fs, const char *types);
+extern int mnt_fs_match_options(mnt_fs *fs, const char *options);
+extern int mnt_fs_print_debug(mnt_fs *fs, FILE *file);
+
+/* tab-parse.c */
+extern mnt_tab *mnt_new_tab_from_file(const char *filename);
+extern int mnt_tab_parse_stream(mnt_tab *tb, FILE *f, const char *filename);
+extern int mnt_tab_parse_file(mnt_tab *tb, const char *filename);
+extern int mnt_tab_parse_fstab(mnt_tab *tb, const char *filename);
+extern int mnt_tab_parse_mtab(mnt_tab *tb, const char *filename);
+extern int mnt_tab_set_parser_errcb(mnt_tab *tb,
+                int (*cb)(mnt_tab *tb, const char *filename, int line));
+
+/* tab.c */
+extern mnt_tab *mnt_new_tab(void);
+extern void mnt_free_tab(mnt_tab *tb);
+extern int mnt_tab_get_nents(mnt_tab *tb);
+extern int mnt_tab_set_cache(mnt_tab *tb, mnt_cache *mpc);
+extern mnt_cache *mnt_tab_get_cache(mnt_tab *tb);
+extern const char *mnt_tab_get_name(mnt_tab *tb);
+extern int mnt_tab_add_fs(mnt_tab *tb, mnt_fs *fs);
+extern int mnt_tab_remove_fs(mnt_tab *tb, mnt_fs *fs);
+extern int mnt_tab_next_fs(mnt_tab *tb, mnt_iter *itr, mnt_fs **fs);
+extern int mnt_tab_next_child_fs(mnt_tab *tb, mnt_iter *itr,
+	                        mnt_fs *parent, mnt_fs **chld);
+extern int mnt_tab_get_root_fs(mnt_tab *tb, mnt_fs **root);
+extern int mnt_tab_set_iter(mnt_tab *tb, mnt_iter *itr, mnt_fs *fs);
+
+extern mnt_fs *mnt_tab_find_target(mnt_tab *tb, const char *path, int direction);
+extern mnt_fs *mnt_tab_find_srcpath(mnt_tab *tb, const char *path, int direction);
+extern mnt_fs *mnt_tab_find_tag(mnt_tab *tb, const char *tag,
+				const char *val, int direction);
+extern mnt_fs *mnt_tab_find_source(mnt_tab *tb, const char *source, int direction);
+extern mnt_fs *mnt_tab_find_pair(mnt_tab *tb, const char *source,
+				const char *target, int direction);
+
+extern int mnt_tab_find_next_fs(mnt_tab *tb, mnt_iter *itr,
+			int (*match_func)(mnt_fs *, void *), void *userdata,
+		        mnt_fs **fs);
+
+/*
+ * mount(8) userspace options masks (MNT_MAP_USERSPACE map)
+ */
+#define MNT_MS_NOAUTO	(1 << 2)
+#define MNT_MS_USER	(1 << 3)
+#define MNT_MS_USERS	(1 << 4)
+#define MNT_MS_OWNER	(1 << 5)
+#define MNT_MS_GROUP	(1 << 6)
+#define MNT_MS_NETDEV	(1 << 7)
+#define MNT_MS_COMMENT  (1 << 8)
+#define MNT_MS_LOOP     (1 << 9)
+#define MNT_MS_NOFAIL   (1 << 10)
+#define MNT_MS_UHELPER  (1 << 11)
+
+/*
+ * mount(2) MS_* masks (MNT_MAP_LINUX map)
+ */
+#ifndef MS_RDONLY
+#define MS_RDONLY	 1	/* Mount read-only */
+#endif
+#ifndef MS_NOSUID
+#define MS_NOSUID	 2	/* Ignore suid and sgid bits */
+#endif
+#ifndef MS_NODEV
+#define MS_NODEV	 4	/* Disallow access to device special files */
+#endif
+#ifndef MS_NOEXEC
+#define MS_NOEXEC	 8	/* Disallow program execution */
+#endif
+#ifndef MS_SYNCHRONOUS
+#define MS_SYNCHRONOUS	16	/* Writes are synced at once */
+#endif
+#ifndef MS_REMOUNT
+#define MS_REMOUNT	32	/* Alter flags of a mounted FS */
+#endif
+#ifndef MS_MANDLOCK
+#define MS_MANDLOCK	64	/* Allow mandatory locks on an FS */
+#endif
+#ifndef MS_DIRSYNC
+#define MS_DIRSYNC	128	/* Directory modifications are synchronous */
+#endif
+#ifndef MS_NOATIME
+#define MS_NOATIME	0x400	/* 1024: Do not update access times. */
+#endif
+#ifndef MS_NODIRATIME
+#define MS_NODIRATIME   0x800	/* 2048: Don't update directory access times */
+#endif
+#ifndef MS_BIND
+#define	MS_BIND		0x1000	/* 4096: Mount existing tree also elsewhere */
+#endif
+#ifndef MS_MOVE
+#define MS_MOVE		0x2000	/* 8192: Atomically move tree */
+#endif
+#ifndef MS_REC
+#define MS_REC		0x4000	/* 16384: Recursive loopback */
+#endif
+#ifndef MS_VERBOSE
+#define MS_VERBOSE	0x8000	/* 32768 */
+#endif
+#ifndef MS_RELATIME
+#define MS_RELATIME	0x200000 /* 200000: Update access times relative
+                                  to mtime/ctime */
+#endif
+#ifndef MS_UNBINDABLE
+#define MS_UNBINDABLE	(1<<17)	/* 131072 unbindable*/
+#endif
+#ifndef MS_PRIVATE
+#define MS_PRIVATE	(1<<18)	/* 262144 Private*/
+#endif
+#ifndef MS_SLAVE
+#define MS_SLAVE	(1<<19)	/* 524288 Slave*/
+#endif
+#ifndef MS_SHARED
+#define MS_SHARED	(1<<20)	/* 1048576 Shared*/
+#endif
+#ifndef MS_I_VERSION
+#define MS_I_VERSION	(1<<23)	/* update inode I_version field */
+#endif
+#ifndef MS_STRICTATIME
+#define MS_STRICTATIME	(1<<24) /* strict atime semantics */
+#endif
+
+/*
+ * Magic mount flag number. Had to be or-ed to the flag values.
+ */
+#ifndef MS_MGC_VAL
+#define MS_MGC_VAL 0xC0ED0000	/* magic flag number to indicate "new" flags */
+#endif
+#ifndef MS_MGC_MSK
+#define MS_MGC_MSK 0xffff0000	/* magic flag number mask */
+#endif
+
+
+/* Shared-subtree options */
+#define MS_PROPAGATION  (MS_SHARED|MS_SLAVE|MS_UNBINDABLE|MS_PRIVATE)
+
+/* Options that we make ordinary users have by default.  */
+#define MS_SECURE	(MS_NOEXEC|MS_NOSUID|MS_NODEV)
+
+/* Options that we make owner-mounted devices have by default */
+#define MS_OWNERSECURE	(MS_NOSUID|MS_NODEV)
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _LIBMOUNT_MOUNT_H */

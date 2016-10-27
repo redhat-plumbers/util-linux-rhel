@@ -66,6 +66,17 @@ blkid_static_CFLAGS = $(AM_CFLAGS) -I$(ul_libblkid_incdir)
 endif
 endif
 
+if BUILD_LIBMOUNT
+bin_PROGRAMS += findmnt
+dist_man_MANS += findmnt.8
+findmnt_LDADD = $(ul_libmount_la)
+findmnt_CFLAGS = $(AM_CFLAGS) -I$(ul_libmount_incdir)
+findmnt_SOURCES = findmnt.c \
+		$(top_srcdir)/lib/tt.c \
+		$(top_srcdir)/lib/strutils.c \
+		$(top_srcdir)/lib/mbsalign.c
+endif
+
 if HAVE_TINFO
 cal_LDADD = -ltinfo @NCURSES_LIBS@
 else
