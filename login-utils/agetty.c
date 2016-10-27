@@ -134,6 +134,11 @@ struct options {
 #define F_NOPROMPT	(1<<7)		/* don't ask for login name! */
 #define F_LCUC		(1<<8)		/* Support for *LCUC stty modes */
 
+/*
+ * backport from util-linux 2.21 to RHEL6
+ */
+#define F_REMOTE	(1<<20)		/* Add '-h fakehost' to login(1) command line */
+
 /* Storage for things detected while the login name was read. */
 
 struct chardata {
@@ -356,7 +361,11 @@ main(argc, argv)
 
     /* Let the login program take care of password validation. */
 
-    (void) execl(options.login, options.login, "--", logname, NULL);
+    if ((options.flags & F_REMOTE) && fakehost)
+        execl(options.login, options.login, "-h", fakehost, "--", logname, NULL);
+    else
+        execl(options.login, options.login, "--", logname, NULL);
+
     error(_("%s: can't exec %s: %m"), options.tty, options.login);
     exit(0);  /* quiet GCC */
 }
@@ -373,7 +382,7 @@ parse_args(argc, argv, op)
     extern int optind;			/* getopt */
     int     c;
 
-    while (isascii(c = getopt(argc, argv, "8I:LH:f:hil:mt:wUn"))) {
+    while (isascii(c = getopt(argc, argv, "8I:LH:Ef:hil:mt:wUn"))) {
 	switch (c) {
 	case '8':
 	    op->eightbits = 1;
@@ -423,6 +432,9 @@ parse_args(argc, argv, op)
  	    break;
 	case 'H':                               /* fake login host */
 	    fakehost = optarg;
+	    break;
+	case 'E':
+	    op->flags |= F_REMOTE;
 	    break;
 	case 'f':				/* custom issue file */
 	    op->flags |= F_CUSTISSUE;

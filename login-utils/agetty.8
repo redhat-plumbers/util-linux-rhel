@@ -106,6 +106,10 @@ login prompt. Terminals or communications hardware may become confused
 when receiving lots of text at the wrong baud rate; dial-up scripts
 may fail if the login prompt is preceded by too much text.
 .TP
+\-E
+If \-H \fIfakehost\fP option is given then \-h \fIfakehost\fP options is
+added to the the \fB/bin/login\fP command line.
+.TP
 \-f \fIissue_file\fP
 Display the contents of \fIissue_file\fP instead of \fI/etc/issue\fP.
 This allows custom messages to be displayed on different terminals.
