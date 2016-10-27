@@ -754,7 +754,7 @@ Do not use noatime feature, then the inode access time is controlled by kernel
 defaults. See also the description for
 .B strictatime
 and
-.B reatime
+.B relatime
 mount options.
 .TP
 .B noatime
@@ -824,7 +824,7 @@ For more details, see
 .TP
 .B defaults
 Use default options:
-.BR rw ", " suid ", " dev ", " exec ", " auto ", " nouser ", and " async.
+.BR rw ", " suid ", " dev ", " exec ", " auto ", " nouser ", " async ", and " relatime.
 .TP
 .B dev
 Interpret character or block special devices on the filesystem.
@@ -1323,7 +1323,7 @@ in files after a crash and journal recovery.
 This enables/disables barriers.  barrier=0 disables it, barrier=1 enables it.
 Write barriers enforce proper on-disk ordering of journal commits, making
 volatile disk write caches safe to use, at some performance penalty.  The ext3
-filesystem does not enable write barriers by default.  Be sure to enable
+filesystem enables write barriers by default.  Be sure to enable
 barriers unless your disks are battery-backed one way or another.  Otherwise
 you risk filesystem corruption in case of power failure.
 .TP
@@ -1381,10 +1381,10 @@ with other ext4 mount options.
 
 The ext4 filesystem enables write barriers by default.
 .TP
-.BI inode_readahead= n
+.BI inode_readahead_blks= n
 This tuning parameter controls the maximum number of inode table blocks that
 ext4's inode table readahead algorithm will pre-read into the buffer cache.
-The default value is 32 blocks.
+The value must be a power of 2. The default value is 32 blocks.
 .TP
 .BI stripe= n
 Number of filesystem blocks that mballoc will try to use for allocation size
