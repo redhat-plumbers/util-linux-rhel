@@ -296,6 +296,60 @@ print_all (char *types) {
      exit (0);
 }
 
+/* returns newly allocated string or NULL options string is empty */
+static char *
+remove_opt(const char *opts, const char *remove)
+{
+	char *begin = NULL, *end = NULL, *p, *res;
+	int open_quote = 0, changed = 0;
+	size_t remsz;
+
+	if (!opts)
+		return NULL;
+
+	res = xstrdup(opts);
+	remsz = strlen(remove);
+
+	for (p = res; p && *p; p++) {
+		if (!begin)
+			begin = p;		/* begin of the option item */
+		if (*p == '"')
+			open_quote ^= 1;	/* reverse the status */
+		if (open_quote)
+			continue;		/* still in quoted block */
+		if (*p == ',')
+			end = p;		/* terminate the option item */
+		else if (*(p + 1) == '\0')
+			end = p + 1;		/* end of optstr */
+		if (!begin || !end)
+			continue;
+
+		if (strncmp(begin, remove, remsz) == 0) {
+			size_t sz;
+
+			if (*end == ',')
+				end++;
+			sz = strlen(end);
+
+			memmove(begin, end, sz + 1);
+			if (!*begin && *(begin - 1) == ',')
+				*(begin - 1) = '\0';
+			p = begin;
+			changed = 1;
+		}
+		end = begin = NULL;
+	}
+
+	if (changed && verbose)
+		printf (_("mount: %s option removed.\n"), remove);
+
+	if (*res == '\0') {
+		free(res);
+		res = NULL;
+	}
+	return res;
+}
+
 /* reallocates its first arg */
 static char *
 append_opt(char *s, const char *opt, const char *val)
@@ -373,6 +427,14 @@ append_context(const char *optname, char *optdata, char **extra_opts)
 		printf(_("mount: translated %s '%s' to '%s'\n"),
 				optname, data, (char *) raw);
 
+	/* deduplicate -- kernel hates duplicate SELinux options */
+	if (*extra_opts && strstr(*extra_opts, optname)) {
+		char *tmp = *extra_opts;
+		*extra_opts = remove_opt(tmp, optname);
+		free(tmp);
+	}
+
+	/* append translated version */
 	*extra_opts = append_opt(*extra_opts, optname, NULL);
 	*extra_opts = xstrconcat4(*extra_opts, "\"", (char *) raw, "\"");
 
@@ -380,54 +442,29 @@ append_context(const char *optname, char *optdata, char **extra_opts)
 	return 0;
 }
 
-/* returns newly allocated string without *context= options */
-static char *remove_context_options(char *opts)
+/* returns newly allocated string without *context= options or NULL if
+ * @opts is empty */
+static char *remove_context_options(const char *opts)
 {
-	char *begin = NULL, *end = NULL, *p;
-	int open_quote = 0, changed = 0;
+	char *tmp, *res;
 
-	if (!opts)
-		return NULL;
-
-	opts = xstrdup(opts);
-
-	for (p = opts; p && *p; p++) {
-		if (!begin)
-			begin = p;		/* begin of the option item */
-		if (*p == '"')
-			open_quote ^= 1;	/* reverse the status */
-		if (open_quote)
-			continue;		/* still in quoted block */
-		if (*p == ',')
-			end = p;		/* terminate the option item */
-		else if (*(p + 1) == '\0')
-			end = p + 1;		/* end of optstr */
-		if (!begin || !end)
-			continue;
-
-		if (strncmp(begin, "context=", 8) == 0 ||
-		    strncmp(begin, "fscontext=", 10) == 0 ||
-		    strncmp(begin, "defcontext=", 11) == 0 ||
-	            strncmp(begin, "rootcontext=", 12) == 0) {
-			size_t sz;
-
-			if ((begin == opts || *(begin - 1) == ',') && *end == ',')
-				end++;
-			sz = strlen(end);
-
-			memmove(begin, end, sz + 1);
-			if (!*begin && *(begin - 1) == ',')
-				*(begin - 1) = '\0';
-
-			p = begin;
-			changed = 1;
-		}
+	res = remove_opt(opts, "context=");
+	if (res) {
+		tmp = res;
+		res = remove_opt(tmp, "fscontext=");
+		free(tmp);
 	}
-
-	if (changed && verbose)
-		printf (_("mount: SELinux *context= options are ignore on remount.\n"));
-
-	return opts;
+	if (res) {
+		tmp = res;
+		res = remove_opt(tmp, "defcontext=");
+		free(tmp);
+	}
+	if (res) {
+		tmp = res;
+		res = remove_opt(tmp, "rootcontext=");
+		free(tmp);
+	}
+	return res;
 }
 #endif
 
@@ -1400,6 +1437,9 @@ try_mount_one (const char *spec0, const char *node0, const char *types0,
   if ((flags & MS_REMOUNT) && mount_opts)
       mount_opts = remove_context_options(mount_opts);
 #endif
+
+  if (verbose > 1)
+      printf("final mount options: '%s'\n", mount_opts);
 
   /*
    * Call mount.TYPE for types that require a separate mount program.
