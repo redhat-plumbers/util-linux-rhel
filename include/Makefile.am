@@ -3,6 +3,7 @@ include $(top_srcdir)/config/include-Makefile.am
 dist_noinst_HEADERS = \
 	c.h \
 	bitops.h \
+	readutmp.h \
 	blkdev.h \
 	canonicalize.h \
 	carefulputc.h \

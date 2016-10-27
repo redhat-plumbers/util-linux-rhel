@@ -116,5 +116,13 @@
 #define _PATH_DEV_BYID		"/dev/disk/by-id"
 #define _PATH_DEV_BYPATH	"/dev/disk/by-path"
 
+#ifndef _PATH_BTMP
+# define _PATH_BTMP              "/var/log/btmp"
+#endif
+
+#define _PATH_LOGINDEFS         "/etc/login.defs"
+#define	_PATH_HUSHLOGIN		".hushlogin"
+#define	_PATH_HUSHLOGINS	"/etc/hushlogins"
+
 #endif /* PATHNAMES_H */
 

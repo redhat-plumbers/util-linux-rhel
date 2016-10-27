@@ -8,6 +8,20 @@ dist_man_MANS =
 
 EXTRA_DIST = README.getty  README.modems-with-agetty  README.poeigl
 
+usrbin_exec_PROGRAMS += lslogins
+dist_man_MANS += lslogins.1
+lslogins_SOURCES = lslogins.c logindefs.c logindefs.h \
+	$(top_srcdir)/lib/tt.c \
+	$(top_srcdir)/lib/mbsalign.c \
+	$(top_srcdir)/lib/strutils.c \
+	$(top_srcdir)/lib/readutmp.c
+lslogins_CFLAGS = $(AM_CFLAGS)
+lslogins_LDADD =
+if HAVE_SELINUX
+lslogins_LDADD += -lselinux
+endif
+
+
 if BUILD_AGETTY
 sbin_PROGRAMS += agetty
 dist_man_MANS += agetty.8
