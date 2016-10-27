@@ -21,6 +21,7 @@
 #endif
 #include <stdlib.h>
 #include <ctype.h>
+#include <fcntl.h>
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -37,7 +38,9 @@
 #include <time.h>
 
 #include "blkidP.h"
+
 #include "canonicalize.h"		/* $(top_srcdir)/include */
+#include "pathnames.h"
 
 /*
  * Find a dev struct in the cache by device name, if available.
@@ -156,7 +159,7 @@ static int is_dm_leaf(const char *devname)
  * Probe a single block device to add to the device cache.
  */
 static void probe_one(blkid_cache cache, const char *ptname,
-		      dev_t devno, int pri, int only_if_new)
+		      dev_t devno, int pri, int only_if_new, int removable)
 {
 	blkid_dev dev = NULL;
 	struct list_head *p, *pnext;
@@ -236,6 +239,8 @@ set_pri:
 				dev->bid_pri += 5;
 		} else if (!strncmp(ptname, "md", 2))
 			dev->bid_pri = BLKID_PRI_MD;
+		if (removable)
+			dev->bid_flags |= BLKID_BID_FL_REMOVABLE;
 	}
 	return;
 }
@@ -327,7 +332,7 @@ static void lvm_probe_all(blkid_cache cache, int only_if_new)
 						  lvm_device,
 						  (unsigned int) dev));
 			probe_one(cache, lvm_device, dev, BLKID_PRI_LVM,
-				  only_if_new);
+				  only_if_new, 0);
 			free(lvm_device);
 		}
 		closedir(lv_list);
@@ -359,7 +364,7 @@ evms_probe_all(blkid_cache cache, int only_if_new)
 					  device, ma, mi));
 
 		probe_one(cache, device, makedev(ma, mi), BLKID_PRI_EVMS,
-			  only_if_new);
+			  only_if_new, 0);
 		num++;
 	}
 	fclose(procpt);
@@ -407,7 +412,7 @@ ubi_probe_all(blkid_cache cache, int only_if_new)
 				continue;
 			DBG(DEBUG_DEVNAME, printf("UBI vol %s/%s: devno 0x%04X\n",
 				  *dirname, name, (int) dev));
-			probe_one(cache, name, dev, BLKID_PRI_UBI, only_if_new);
+			probe_one(cache, name, dev, BLKID_PRI_UBI, only_if_new, 0);
 		}
 		closedir(dir);
 	}
@@ -484,7 +489,7 @@ static int probe_all(blkid_cache cache, int only_if_new)
 
 			if (sz > 1)
 				probe_one(cache, ptname, devs[which], 0,
-					  only_if_new);
+					  only_if_new, 0);
 			lens[which] = 0;	/* mark as checked */
 		}
 
@@ -521,19 +526,80 @@ static int probe_all(blkid_cache cache, int only_if_new)
 			    printf("whole dev %s, devno 0x%04X\n",
 				   ptnames[last], (unsigned int) devs[last]));
 			probe_one(cache, ptnames[last], devs[last], 0,
-				  only_if_new);
+				  only_if_new, 0);
 			lens[last] = 0;
 		}
 	}
 
 	/* Handle the last device if it wasn't partitioned */
 	if (lens[which])
-		probe_one(cache, ptname, devs[which], 0, only_if_new);
+		probe_one(cache, ptname, devs[which], 0, only_if_new, 0);
 
 	fclose(proc);
 	blkid_flush_cache(cache);
 	return 0;
 }
+
+/* Don't use it by default -- it's pretty slow (because cdroms, floppy, ...)
+ */
+static int probe_all_removable(blkid_cache cache)
+{
+	DIR *dir;
+	struct dirent *d;
+	char buf[PATH_MAX];
+
+	if (!cache)
+		return -BLKID_ERR_PARAM;
+
+	dir = opendir(_PATH_SYS_BLOCK);
+	if (!dir)
+		return -BLKID_ERR_PROC;
+
+	while((d = readdir(dir))) {
+		int fd, rc, ma, mi;
+
+#ifdef _DIRENT_HAVE_D_TYPE
+		if (d->d_type != DT_UNKNOWN && d->d_type != DT_LNK)
+			continue;
+#endif
+		if (d->d_name[0] == '.' &&
+		    ((d->d_name[1] == 0) ||
+		     ((d->d_name[1] == '.') && (d->d_name[2] == 0))))
+			continue;
+
+		snprintf(buf, sizeof(buf), "%s/removable", d->d_name);
+		fd = blkid_openat(dir, _PATH_SYS_BLOCK, buf, O_RDONLY);
+		if (fd < 0)
+			continue;
+
+		rc = read(fd, buf, 1);
+		close(fd);
+
+		if (rc != 1 || *buf != '1')
+			continue;		/* not removable device */
+
+		/* get devno */
+		snprintf(buf, sizeof(buf), "%s/dev", d->d_name);
+		fd = blkid_openat(dir, _PATH_SYS_BLOCK, buf, O_RDONLY);
+		if (fd < 0)
+			continue;
+
+		rc = read(fd, buf, sizeof(buf));
+		close(fd);
+
+		if (rc < 3)
+			continue;		/* M:N */
+		buf[rc] = '\0';
+		if (sscanf(buf, "%d:%d", &ma, &mi) != 2)
+			continue;
+
+		probe_one(cache, d->d_name, makedev(ma, mi), 0, 0, 1);
+	}
+
+	closedir(dir);
+	return 0;
+}
+
 
 /**
  * blkid_probe_all:
@@ -573,6 +639,33 @@ int blkid_probe_all_new(blkid_cache cache)
 	return ret;
 }
 
+/**
+ * blkid_probe_all_removable:
+ * @cache: cache handler
+ *
+ * The libblkid probing is based on devices from /proc/partitions by default.
+ * This file usually does not contain removable devices (e.g. CDROMs) and this kind
+ * of devices are invisible for libblkid.
+ *
+ * This function adds removable block devices to @cache (probing is based on
+ * information from the /sys directory). Don't forget that removable devices
+ * (floppies, CDROMs, ...) could be pretty slow. It's very bad idea to call
+ * this function by default.
+ *
+ * Note that devices which were detected by this function won't be written to
+ * blkid.tab cache file.
+ *
+ * Returns: 0 on success, or number less than zero in case of error.
+ */
+int blkid_probe_all_removable(blkid_cache cache)
+{
+	int ret;
+
+	DBG(DEBUG_PROBE, printf("Begin blkid_probe_all_removable()\n"));
+	ret = probe_all_removable(cache);
+	DBG(DEBUG_PROBE, printf("End blkid_probe_all_removable()\n"));
+	return ret;
+}
 
 #ifdef TEST_PROGRAM
 int main(int argc, char **argv)
@@ -593,6 +686,9 @@ int main(int argc, char **argv)
 	}
 	if (blkid_probe_all(cache) < 0)
 		printf("%s: error probing devices\n", argv[0]);
+
+	if (blkid_probe_all_removable(cache) < 0)
+		printf("%s: error probing removable devices\n", argv[0]);
 
 	blkid_put_cache(cache);
 	return (0);

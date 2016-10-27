@@ -51,6 +51,7 @@ struct blkid_struct_dev
 
 #define BLKID_BID_FL_VERIFIED	0x0001	/* Device data validated from disk */
 #define BLKID_BID_FL_INVALID	0x0004	/* Device is invalid */
+#define BLKID_BID_FL_REMOVABLE	0x0008	/* Device added by blkid_probe_all_removable() */
 
 /*
  * Each tag defines a NAME=value pair for a particular device.  The tags
@@ -267,6 +268,8 @@ extern char *blkid_strndup(const char *s, const int length);
 extern char *blkid_strconcat(const char *a, const char *b, const char *c);
 extern int blkid_fstatat(DIR *dir, const char *dirname, const char *filename,
 			struct stat *st, int nofollow);
+extern int blkid_openat(DIR *dir, const char *dirname, const char *filename,
+                        int flags);
 
 #define BLKID_CACHE_FILE	"/etc/blkid/blkid.tab"
 #define BLKID_CONFIG_FILE	"/etc/blkid.conf"
