@@ -241,6 +241,22 @@ int	possibly_osf_label = 0;
 
 jmp_buf listingbuf;
 
+
+static unsigned long long
+get_abs_partition_start(struct pte *pe)
+{
+	return pe->offset + get_start_sect(pe->part_table);
+}
+
+static unsigned long long
+get_abs_partition_end(struct pte *pe)
+{
+	unsigned long long size;
+
+	size = get_nr_sects(pe->part_table);
+	return get_abs_partition_start(pe) + size - (size ? 1 : 0);
+}
+
 void fatal(enum failure why) {
 	char	error[LINE_LENGTH],
 		*message = error;
@@ -1955,6 +1971,7 @@ static void
 fix_chain_of_logicals(void) {
 	int j, oj, ojj, sj, sjj;
 	struct partition *pj,*pjj,tmp;
+	struct pte *last;
 
 	/* Stage 1: sort sectors but leave sector of part 4 */
 	/* (Its sector is the global extended_offset.) */
@@ -1969,10 +1986,6 @@ fix_chain_of_logicals(void) {
 			set_start_sect(pj, get_start_sect(pj)+oj-ojj);
 			pjj = ptes[j+1].part_table;
 			set_start_sect(pjj, get_start_sect(pjj)+ojj-oj);
-			set_start_sect(ptes[j-1].ext_pointer,
-				       ojj-extended_offset);
-			set_start_sect(ptes[j].ext_pointer,
-				       oj-extended_offset);
 			goto stage1;
 		}
 	}
@@ -1994,6 +2007,32 @@ fix_chain_of_logicals(void) {
 			set_start_sect(pjj, oj+sj-ojj);
 			goto stage2;
 		}
+	}
+
+
+	/* Update EBR links */
+	for (j = 4; j < partitions - 1; j++) {
+		struct pte *cur = &ptes[j],
+			   *nxt = &ptes[j+1];
+
+		unsigned int noff = nxt->offset - extended_offset,
+			     ooff = get_start_sect(cur->ext_pointer);
+
+		if (noff == ooff)
+			continue;
+		/*
+		fprintf(stderr, "DOS: fix EBR [%10ju] link %ju -> %ju\n",
+			(uintmax_t) cur->offset,
+			(uintmax_t) ooff, (uintmax_t) noff);
+		*/
+		set_partition(j, 1, nxt->offset, get_abs_partition_end(nxt), EXTENDED);
+	}
+
+	/* always terminate the chain ! */
+	last = &ptes[partitions - 1];
+	if (last && last->ext_pointer) {
+		clear_partition(last->ext_pointer);
+		last->changed = 1;
 	}
 
 	/* Probably something was changed */
