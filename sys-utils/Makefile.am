@@ -16,6 +16,10 @@ usrsbin_exec_PROGRAMS += ldattach tunelp rtcwake
 
 dist_man_MANS += dmesg.1 ctrlaltdel.8 cytune.8 setarch.8 \
 		ldattach.8 lscpu.1 tunelp.8 rtcwake.8 fsfreeze.8 fstrim.8
+
+sbin_PROGRAMS += blkdiscard
+dist_man_MANS += blkdiscard.8
+blkdiscard_SOURCES = blkdiscard.c $(top_srcdir)/lib/strutils.c
 endif
 
 lscpu_SOURCES = lscpu.c \
