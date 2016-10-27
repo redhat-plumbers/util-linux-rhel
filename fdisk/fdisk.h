@@ -73,8 +73,9 @@ extern int read_hex(struct systypes *sys);
 extern void reread_partition_table(int leave);
 extern struct partition *get_part_table(int);
 extern int valid_part_table_flag(unsigned char *b);
-extern unsigned int read_int(unsigned int low, unsigned int dflt,
-			     unsigned int high, unsigned int base, char *mesg);
+
+extern unsigned long long read_int(unsigned long long low, unsigned long long dflt,
+			     unsigned long long high, unsigned long long base, char *mesg);
 
 extern unsigned char *MBRbuffer;
 extern void zeroize_mbr_buffer(void);
