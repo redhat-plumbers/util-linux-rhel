@@ -84,6 +84,26 @@ Specify that
 .B kill
 should only print the process id (pid)
 of the named processes, and not send any signals.
+.SH NOTES
+It is not possible to send a signal to explicitly selected thread in a
+multithreaded process by
+.BR kill (2)
+syscall.  If
+.BR kill(2)
+is used to send a signal to a thread group, then kernel selects arbitrary
+member of the thread group that has not blocked the signal.  For more details
+see
+.BR clone (2)
+CLONE_THREAD description.
+.PP
+The command
+.BR kill (1)
+as well as syscall
+.BR kill (2)
+accepts TID (thread ID, see
+.BR gettid (2))
+as argument.  In this case the kill behavior is not changed and the signal is
+also delivered to the thread group rather than to the specified thread.
 .SH "SEE ALSO"
 .BR bash (1),
 .BR tcsh (1),
