@@ -15,81 +15,88 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
- * 675 Mass Ave, Cambridge, MA 02139, USA.
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <err.h>
 #include <errno.h>
 #include <getopt.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <sys/mount.h>
 
 #include "nls.h"
+#include "c.h"
+#include "namespace.h"
+#include "exec_shell.h"
+#include "xalloc.h"
+#include "pathnames.h"
 
-#ifndef CLONE_NEWSNS
-# define CLONE_NEWNS 0x00020000
-#endif
-#ifndef CLONE_NEWUTS
-# define CLONE_NEWUTS 0x04000000
-#endif
-#ifndef CLONE_NEWIPC
-# define CLONE_NEWIPC 0x08000000
-#endif
-#ifndef CLONE_NEWNET
-# define CLONE_NEWNET 0x40000000
-#endif
-
-#ifndef HAVE_UNSHARE
-# include <sys/syscall.h>
-
-static int unshare(int flags)
-{
-	return syscall(SYS_unshare, flags);
-}
-#endif
+#include "mount/mount_constants.h"
 
 static void usage(int status)
 {
 	FILE *out = status == EXIT_SUCCESS ? stdout : stderr;
 
-	fprintf(out, _("Usage: %s [options] <program> [args...]\n"),
-		program_invocation_short_name);
+	fputs(USAGE_HEADER, out);
+	fprintf(out,
+	      _(" %s [options] <program> [args...]\n"),	program_invocation_short_name);
 
-	fputs(_("Run program with some namespaces unshared from parent\n\n"
-		"  -h, --help        usage information (this)\n"
-		"  -m, --mount       unshare mounts namespace\n"
-		"  -u, --uts         unshare UTS namespace (hostname etc)\n"
-		"  -i, --ipc         unshare System V IPC namespace\n"
-		"  -n, --net         unshare network namespace\n"), out);
+	fputs(USAGE_OPTIONS, out);
+	fputs(_(" -m, --mount               unshare mounts namespace\n"), out);
+	fputs(_(" -u, --uts                 unshare UTS namespace (hostname etc)\n"), out);
+	fputs(_(" -i, --ipc                 unshare System V IPC namespace\n"), out);
+	fputs(_(" -n, --net                 unshare network namespace\n"), out);
+	fputs(_(" -p, --pid                 unshare pid namespace\n"), out);
+	fputs(_(" -f, --fork                fork before launching <program>\n"), out);
+	fputs(_("     --mount-proc[=<dir>]  mount proc filesystem first (implies --mount)\n"), out);
 
-	fprintf(out, _("\nFor more information see unshare(1).\n"));
+	fputs(USAGE_SEPARATOR, out);
+	fputs(USAGE_HELP, out);
+	fputs(USAGE_VERSION, out);
+	fprintf(out, USAGE_MAN_TAIL("unshare(1)"));
+
 	exit(status);
 }
 
 int main(int argc, char *argv[])
 {
-	struct option longopts[] = {
+	enum {
+		OPT_MOUNTPROC = CHAR_MAX + 1
+	};
+	static const struct option longopts[] = {
 		{ "help", no_argument, 0, 'h' },
+		{ "version", no_argument, 0, 'V'},
 		{ "mount", no_argument, 0, 'm' },
 		{ "uts", no_argument, 0, 'u' },
 		{ "ipc", no_argument, 0, 'i' },
 		{ "net", no_argument, 0, 'n' },
+		{ "pid", no_argument, 0, 'p' },
+		{ "fork", no_argument, 0, 'f' },
+		{ "mount-proc", optional_argument, 0, OPT_MOUNTPROC },
+		{ NULL, 0, 0, 0 }
 	};
 
 	int unshare_flags = 0;
+	int c, forkit = 0, maproot = 0;
+	const char *procmnt = NULL;
 
-	int c;
-
-	setlocale(LC_MESSAGES, "");
+	setlocale(LC_ALL, "");
 	bindtextdomain(PACKAGE, LOCALEDIR);
 	textdomain(PACKAGE);
 
-	while((c = getopt_long(argc, argv, "hmuin", longopts, NULL)) != -1) {
-		switch(c) {
+	while ((c = getopt_long(argc, argv, "+fhVmuinp", longopts, NULL)) != -1) {
+		switch (c) {
+		case 'f':
+			forkit = 1;
+			break;
 		case 'h':
 			usage(EXIT_SUCCESS);
+		case 'V':
+			printf(UTIL_LINUX_VERSION);
+			return EXIT_SUCCESS;
 		case 'm':
 			unshare_flags |= CLONE_NEWNS;
 			break;
@@ -102,18 +109,49 @@ int main(int argc, char *argv[])
 		case 'n':
 			unshare_flags |= CLONE_NEWNET;
 			break;
+		case 'p':
+			unshare_flags |= CLONE_NEWPID;
+			break;
+		case OPT_MOUNTPROC:
+			unshare_flags |= CLONE_NEWNS;
+			procmnt = optarg ? optarg : "/proc";
+			break;
 		default:
 			usage(EXIT_FAILURE);
 		}
 	}
 
-	if(optind >= argc)
-		usage(EXIT_FAILURE);
-
-	if(-1 == unshare(unshare_flags))
+	if (-1 == unshare(unshare_flags))
 		err(EXIT_FAILURE, _("unshare failed"));
 
-	execvp(argv[optind], argv + optind);
+	if (forkit) {
+		int status;
+		pid_t pid = fork();
 
-	err(EXIT_FAILURE, _("exec %s failed"), argv[optind]);
+		switch(pid) {
+		case -1:
+			err(EXIT_FAILURE, _("fork failed"));
+		case 0:	/* child */
+			break;
+		default: /* parent */
+			if (waitpid(pid, &status, 0) == -1)
+				err(EXIT_FAILURE, _("waitpid failed"));
+			if (WIFEXITED(status))
+				return WEXITSTATUS(status);
+			else if (WIFSIGNALED(status))
+				kill(getpid(), WTERMSIG(status));
+			err(EXIT_FAILURE, _("child exit failed"));
+		}
+	}
+
+	if (procmnt &&
+	    (mount("none", procmnt, NULL, MS_PRIVATE|MS_REC, NULL) != 0 ||
+	     mount("proc", procmnt, "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0))
+			err(EXIT_FAILURE, _("mount %s failed"), procmnt);
+
+	if (optind < argc) {
+		execvp(argv[optind], argv + optind);
+		err(EXIT_FAILURE, _("failed to execute %s"), argv[optind]);
+	}
+	exec_shell();
 }

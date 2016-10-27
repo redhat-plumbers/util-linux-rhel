@@ -10,8 +10,10 @@
 #ifndef UTIL_LINUX_XALLOC_H
 #define UTIL_LINUX_XALLOC_H
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "c.h"
 

@@ -59,6 +59,8 @@ endif
 
 if BUILD_UNSHARE
 usrbin_exec_PROGRAMS += unshare
+unshare_SOURCES = unshare.c \
+	$(top_srcdir)/lib/exec_shell.c
 dist_man_MANS += unshare.1
 endif
 
