@@ -39,6 +39,14 @@
 
 #include <linux/falloc.h>	/* for FALLOC_FL_* flags */
 
+#ifndef FALLOC_FL_KEEP_SIZE
+# define FALLOC_FL_KEEP_SIZE 1
+#endif
+
+#ifndef FALLOC_FL_PUNCH_HOLE
+# define FALLOC_FL_PUNCH_HOLE 2
+#endif
+
 #include "nls.h"
 
 
@@ -50,6 +58,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fprintf(out, _(
 		" -h, --help          this help\n"
 		" -n, --keep-size     don't modify the length of the file\n"
+		" -p, --punch-hole    punch holes in the file\n"
 		" -o, --offset <num>  offset of the allocation, in bytes\n"
 		" -l, --length <num>  length of the allocation, in bytes\n"));
 
@@ -114,6 +123,7 @@ int main(int argc, char **argv)
 	struct option longopts[] = {
 	    { "help",      0, 0, 'h' },
 	    { "keep-size", 0, 0, 'n' },
+	    { "punch-hole", 0, 0, 'p' },
 	    { "offset",    1, 0, 'o' },
 	    { "lenght",    1, 0, 'l' },
 	    { NULL,        0, 0, 0 }
@@ -123,11 +133,14 @@ int main(int argc, char **argv)
 	bindtextdomain(PACKAGE, LOCALEDIR);
 	textdomain(PACKAGE);
 
-	while ((c = getopt_long(argc, argv, "hnl:o:", longopts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "hnpl:o:", longopts, NULL)) != -1) {
 		switch(c) {
 		case 'h':
 			usage(stdout);
 			break;
+		case 'p':
+			mode |= FALLOC_FL_PUNCH_HOLE;
+			/* fall through */
 		case 'n':
 			mode |= FALLOC_FL_KEEP_SIZE;
 			break;
