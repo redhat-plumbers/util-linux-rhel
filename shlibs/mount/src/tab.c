@@ -434,7 +434,7 @@ mnt_fs *mnt_tab_find_target(mnt_tab *tb, const char *path, int direction)
 	/* native @target */
 	mnt_reset_iter(&itr, direction);
 	while(mnt_tab_next_fs(tb, &itr, &fs) == 0)
-		if (fs->target && strcmp(fs->target, path) == 0)
+		if (mnt_fs_streq_target(fs, path))
 			return fs;
 
 	if (!tb->cache || !(cn = mnt_resolve_path(path, tb->cache)))
@@ -443,7 +443,7 @@ mnt_fs *mnt_tab_find_target(mnt_tab *tb, const char *path, int direction)
 	/* canonicalized paths in mnt_tab */
 	mnt_reset_iter(&itr, direction);
 	while(mnt_tab_next_fs(tb, &itr, &fs) == 0) {
-		if (fs->target && strcmp(fs->target, cn) == 0)
+		if (mnt_fs_streq_target(fs, cn))
 			return fs;
 	}
 
@@ -494,10 +494,9 @@ mnt_fs *mnt_tab_find_srcpath(mnt_tab *tb, const char *path, int direction)
 	/* native paths */
 	mnt_reset_iter(&itr, direction);
 	while(mnt_tab_next_fs(tb, &itr, &fs) == 0) {
-		p = mnt_fs_get_srcpath(fs);
-		if (p && strcmp(p, path) == 0)
+		if (mnt_fs_streq_srcpath(fs, path))
 			return fs;
-		if (!p)
+		if (!mnt_fs_get_srcpath(fs))
 			/* mnt_fs_get_srcpath() returs nothing, it's TAG */
 			ntags++;
 	}
@@ -509,8 +508,7 @@ mnt_fs *mnt_tab_find_srcpath(mnt_tab *tb, const char *path, int direction)
 	if (ntags < mnt_tab_get_nents(tb)) {
 		mnt_reset_iter(&itr, direction);
 		while(mnt_tab_next_fs(tb, &itr, &fs) == 0) {
-			p = mnt_fs_get_srcpath(fs);
-			if (p && strcmp(p, cn) == 0)
+			if (mnt_fs_streq_srcpath(fs, cn))
 				return fs;
 		}
 	}

@@ -21,6 +21,7 @@
 
 #include "nls.h"
 #include "mountP.h"
+#include "strutils.h"
 
 /**
  * mnt_new_fs:
@@ -180,6 +181,51 @@ int mnt_fs_set_source(mnt_fs *fs, const char *source)
 	if (rc)
 		free(p);
 	return rc;
+}
+
+/*
+ * mnt_fs_streq_target:
+ * @fs: fs
+ * @path: mount point
+ *
+ * Compares @fs target path with @path. The trailing slash is ignored.
+ * See also mnt_fs_match_target().
+ *
+ * Returns: 1 if @fs target path equal to @path, otherwise 0.
+ */
+int mnt_fs_streq_target(mnt_fs *fs, const char *path)
+{
+	assert(fs);
+	return fs && streq_except_trailing_slash(mnt_fs_get_target(fs), path);
+}
+
+/*
+ * mnt_fs_streq_srcpath:
+ * @fs: fs
+ * @path: source path
+ *
+ * Compares @fs source path with @path. The trailing slash is ignored.
+ * See also mnt_fs_match_source().
+ *
+ * Returns: 1 if @fs source path equal to @path, otherwise 0.
+ */
+int mnt_fs_streq_srcpath(mnt_fs *fs, const char *path)
+{
+	const char *p;
+
+	assert(fs);
+	if (!fs)
+		return 0;
+
+	p = mnt_fs_get_srcpath(fs);
+
+	if (!(fs->flags & MNT_FS_PSEUDO))
+		return streq_except_trailing_slash(p, path);
+
+	if (!p && !path)
+		return 1;
+
+	return p && path && strcmp(p, path) == 0;
 }
 
 /**
@@ -1061,7 +1107,7 @@ int mnt_fs_match_target(mnt_fs *fs, const char *target, mnt_cache *cache)
 		return 0;
 
 	/* 1) native paths */
-	rc = !strcmp(target, fs->target);
+	rc = mnt_fs_streq_target(fs, target);
 
 	if (!rc && cache) {
 		/* 2) - canonicalized and non-canonicalized */
@@ -1104,7 +1150,7 @@ int mnt_fs_match_source(mnt_fs *fs, const char *source, mnt_cache *cache)
 		return 0;
 
 	/* 1) native paths/tags */
-	if (!strcmp(source, fs->source))
+	if (mnt_fs_streq_srcpath(fs, source))
 		return 1;
 
 	if (!cache)
@@ -1118,7 +1164,7 @@ int mnt_fs_match_source(mnt_fs *fs, const char *source, mnt_cache *cache)
 
 	/* 2) canonicalized and native */
 	src = mnt_fs_get_srcpath(fs);
-	if (src && !strcmp(cn, src))
+	if (src && mnt_fs_streq_srcpath(fs, cn))
 		return 1;
 
 	/* 3) canonicalized and canonicalized */

@@ -201,4 +201,8 @@ extern mnt_fs *mnt_copy_mtab_fs(const mnt_fs *fs);
 extern int __mnt_fs_set_source_ptr(mnt_fs *fs, char *source);
 extern int __mnt_fs_set_fstype_ptr(mnt_fs *fs, char *fstype);
 
+/* backport for RHEL6.6 */
+extern int mnt_fs_streq_target(mnt_fs *fs, const char *path);
+extern int mnt_fs_streq_srcpath(mnt_fs *fs, const char *path);
+
 #endif /* _LIBMOUNT_PRIVATE_H */
