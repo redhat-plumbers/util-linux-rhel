@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -27,6 +28,9 @@
 
 #include "blkid.h"
 #include "list.h"
+
+/* enable microsecond resolution for the cache */
+#define HAVE_STRUCT_STAT_ST_MTIM_TV_NSEC 1
 
 /*
  * This describes the attributes of a specific device.
@@ -44,6 +48,7 @@ struct blkid_struct_dev
 	int			bid_pri;	/* Device priority */
 	dev_t			bid_devno;	/* Device major/minor number */
 	time_t			bid_time;	/* Last update time of device */
+	suseconds_t		bid_utime;	/* Last update time (microseconds) */
 	unsigned int		bid_flags;	/* Device status bitflags */
 	char			*bid_label;	/* Shortcut to device LABEL */
 	char			*bid_uuid;	/* Shortcut to binary UUID */
