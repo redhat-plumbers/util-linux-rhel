@@ -18,6 +18,13 @@ dist_man_MANS += dmesg.1 ctrlaltdel.8 cytune.8 setarch.8 \
 		ldattach.8 lscpu.1 tunelp.8 rtcwake.8
 endif
 
+lscpu_SOURCES = lscpu.c \
+	$(top_srcdir)/lib/cpuset.c \
+	$(top_srcdir)/lib/strutils.c \
+	$(top_srcdir)/lib/path.c \
+	$(top_srcdir)/lib/tt.c \
+	$(top_srcdir)/lib/mbsalign.c
+
 cytune_SOURCES = cytune.c cyclades.h
 tunelp_SOURCES = tunelp.c lp.h
 
