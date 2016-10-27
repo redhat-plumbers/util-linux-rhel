@@ -154,6 +154,8 @@ static const struct opt_map opt_map[] = {
   { "group",	0, 0, MS_GROUP  },	/* Let the group of the device mount */
   { "nogroup",	0, 1, MS_GROUP  },	/* Device group has no special privs */
   { "_netdev",	0, 0, MS_COMMENT},	/* Device requires network */
+  { "_rnetdev", 0, 0, MS_COMMENT},	/* Device requires network, but should
+                                           be fscked by rc.sysinit */
   { "comment",	0, 0, MS_COMMENT},	/* fstab comment only (kudzu,_netdev)*/
 
   /* add new options here */
