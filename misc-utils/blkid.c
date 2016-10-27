@@ -423,33 +423,34 @@ static int lowprobe_device(blkid_probe pr, const char *devname,	char *show[],
 
 	if (fstat(fd, &st))
 		goto done;
-	/*
-	 * partitions probing
-	 */
-	blkid_probe_enable_superblocks(pr, 0);	/* enabled by default ;-( */
 
 	blkid_probe_enable_partitions(pr, 1);
-	rc = blkid_do_fullprobe(pr);
-	blkid_probe_enable_partitions(pr, 0);
 
-	if (rc < 0)
-		goto done;	/* -1 = error, 1 = nothing, 0 = succes */
-
-	/*
-	 * Don't probe for FS/RAIDs on small devices
-	 */
-	if (rc || S_ISCHR(st.st_mode) ||
-	    blkid_probe_get_size(pr) > 1024 * 1440) {
+	if (!S_ISCHR(st.st_mode) && blkid_probe_get_size(pr) <= 1024 * 1440) {
 		/*
-		 * filesystems/RAIDs probing
+		 * check if the small disk is partitioned, if yes then
+		 * don't probe for filesystems.
 		 */
-		blkid_probe_enable_superblocks(pr, 1);
+		blkid_probe_enable_superblocks(pr, 0);
 
-		rc = blkid_do_safeprobe(pr);
+		rc = blkid_do_fullprobe(pr);
 		if (rc < 0)
-			goto done;
+			goto done;	/* -1 = error, 1 = nothing, 0 = succes */
+
+		if (blkid_probe_lookup_value(pr, "PTTYPE", NULL, NULL) == 0)
+			/* partition table detected */
+			goto print_vals;
+
+		/* small whole-disk is unpartitioned, probe for filesystems only */
+		blkid_probe_enable_partitions(pr, 0);
 	}
 
+	blkid_probe_enable_superblocks(pr, 1);
+
+	rc = blkid_do_safeprobe(pr);
+	if (rc < 0)
+		goto done;
+print_vals:
 	nvals = blkid_probe_numof_values(pr);
 
 	if (output & OUTPUT_DEVICE_ONLY) {

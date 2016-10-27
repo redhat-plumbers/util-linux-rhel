@@ -30,6 +30,8 @@ static int probe_highpoint45x(blkid_probe pr, const struct blkid_idmag *mag)
 
 	if (pr->size < 0x10000)
 		return -1;
+	if (!S_ISREG(pr->mode) && !blkid_probe_is_wholedisk(pr))
+		return -1;
 
 	off = ((pr->size / 0x200) - 11) * 0x200;
 	hpt = (struct hpt45x_metadata *)
@@ -41,8 +43,19 @@ static int probe_highpoint45x(blkid_probe pr, const struct blkid_idmag *mag)
 	magic = le32_to_cpu(hpt->magic);
 	if (magic != HPT45X_MAGIC_OK && magic != HPT45X_MAGIC_BAD)
 		return -1;
+	if (blkid_probe_set_magic(pr, off, sizeof(hpt->magic),
+				(unsigned char *) &hpt->magic))
+		return -1;
 	return 0;
 }
+
+static int probe_highpoint37x(blkid_probe pr, const struct blkid_idmag *mag)
+{
+	if (!S_ISREG(pr->mode) && !blkid_probe_is_wholedisk(pr))
+		return -1;
+	return 0;
+}
+
 
 const struct blkid_idinfo highpoint45x_idinfo = {
 	.name		= "hpt45x_raid_member",
@@ -54,6 +67,7 @@ const struct blkid_idinfo highpoint45x_idinfo = {
 const struct blkid_idinfo highpoint37x_idinfo = {
 	.name		= "hpt37x_raid_member",
 	.usage		= BLKID_USAGE_RAID,
+	.probefunc	= probe_highpoint37x,
 	.magics		= {
 		/*
 		 * Superblok offset:                      4608 bytes  (9 sectors)

@@ -375,8 +375,10 @@ static int superblocks_probe(blkid_probe pr, struct blkid_chain *chn)
 		/* final check by probing function */
 		if (id->probefunc) {
 			DBG(DEBUG_LOWPROBE, printf("\tcall probefunc()\n"));
-			if (id->probefunc(pr, mag) != 0)
+			if (id->probefunc(pr, mag) != 0) {
+				blkid_probe_chain_reset_vals(pr, chn);
 				continue;
+			}
 		}
 
 		/* all cheks passed */
@@ -385,15 +387,11 @@ static int superblocks_probe(blkid_probe pr, struct blkid_chain *chn)
 				(unsigned char *) id->name,
 				strlen(id->name) + 1);
 
-		if (chn->flags & BLKID_SUBLKS_USAGE)
-			blkid_probe_set_usage(pr, id->usage);
+		blkid_probe_set_usage(pr, id->usage);
 
-		if (hasmag && (chn->flags & BLKID_SUBLKS_MAGIC)) {
-			blkid_probe_set_value(pr, "SBMAGIC",
-				(unsigned char *) mag->magic, mag->len);
-			blkid_probe_sprintf_value(pr, "SBMAGIC_OFFSET",
-				"%llu",	off);
-		}
+		if (hasmag)
+			blkid_probe_set_magic(pr, off, mag->len,
+					(unsigned char *) mag->magic);
 
 		DBG(DEBUG_LOWPROBE,
 			printf("<-- leaving probing loop (type=%s) [SUBLKS idx=%d]\n",
@@ -435,20 +433,24 @@ static int superblocks_safeprobe(blkid_probe pr, struct blkid_chain *chn)
 			/* floppy or so -- returns the first result. */
 			return 0;
 
-		if (!count) {
-			/* save the first result */
-			nvals = blkid_probe_chain_copy_vals(pr, chn, vals, nvals);
-			idx = chn->idx;
-		}
 		count++;
 
 		if (idinfos[chn->idx]->usage & (BLKID_USAGE_RAID | BLKID_USAGE_CRYPTO))
 			break;
+
 		if (!(idinfos[chn->idx]->flags & BLKID_IDINFO_TOLERANT))
 			intol++;
+
+		if (count == 1) {
+			/* save the first result */
+			nvals = blkid_probe_chain_copy_vals(pr, chn, vals, nvals);
+			idx = chn->idx;
+		}
 	}
+
 	if (rc < 0)
 		return rc;		/* error */
+
 	if (count > 1 && intol) {
 		DBG(DEBUG_LOWPROBE,
 			printf("ERROR: superblocks chain: "
@@ -459,12 +461,38 @@ static int superblocks_safeprobe(blkid_probe pr, struct blkid_chain *chn)
 	if (!count)
 		return 1;		/* nothing detected */
 
-	/* restore the first result */
-	blkid_probe_chain_reset_vals(pr, chn);
-	blkid_probe_append_vals(pr, vals, nvals);
-	chn->idx = idx;
+	if (idx != -1) {
+		/* restore the first result */
+		blkid_probe_chain_reset_vals(pr, chn);
+		blkid_probe_append_vals(pr, vals, nvals);
+		chn->idx = idx;
+	}
+
+	/*
+	 * The RAID device could be partitioned. The problem are RAID1 devices
+	 * where the partition table is visible from underlaying devices. We
+	 * have to ignore such partition tables.
+	 */
+	if (chn->idx >= 0 && idinfos[chn->idx]->usage & BLKID_USAGE_RAID)
+		pr->prob_flags |= BLKID_PARTS_IGNORE_PT;
 
 	return 0;
+}
+
+int blkid_probe_set_magic(blkid_probe pr, blkid_loff_t offset,
+			size_t len, unsigned char *magic)
+{
+	int rc = 0;
+	struct blkid_chain *chn = blkid_probe_get_chain(pr);
+
+	if (chn->flags & BLKID_SUBLKS_MAGIC) {
+		if (magic && len)
+			rc = blkid_probe_set_value(pr, "SBMAGIC", magic, len);
+		if (!rc && offset)
+			rc = blkid_probe_sprintf_value(pr, "SBMAGIC_OFFSET",
+					"%llu",	offset);
+	}
+	return rc;
 }
 
 int blkid_probe_set_version(blkid_probe pr, const char *version)
@@ -494,7 +522,11 @@ int blkid_probe_sprintf_version(blkid_probe pr, const char *fmt, ...)
 
 static int blkid_probe_set_usage(blkid_probe pr, int usage)
 {
+	struct blkid_chain *chn = blkid_probe_get_chain(pr);
 	char *u = NULL;
+
+	if (!(chn->flags & BLKID_SUBLKS_USAGE))
+		return 0;
 
 	if (usage & BLKID_USAGE_FILESYSTEM)
 		u = "filesystem";

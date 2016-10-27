@@ -288,20 +288,32 @@ struct blkid_chain *blkid_probe_get_chain(blkid_probe pr)
 
 void *blkid_probe_get_binary_data(blkid_probe pr, struct blkid_chain *chn)
 {
-	int rc;
+	int rc, org_prob_flags;
+	struct blkid_chain *org_chn;
 
 	if (!pr || !chn)
 		return NULL;
 
+	/* save the current setting -- the binary API has to be completely
+	 * independent on the current probing status
+	 */
+	org_chn = pr->cur_chain;
+	org_prob_flags = pr->prob_flags;
+
 	pr->cur_chain = chn;
+	pr->prob_flags = 0;
 	chn->binary = TRUE;
 	blkid_probe_chain_reset_position(chn);
 
 	rc = chn->driver->probe(pr, chn);
 
 	chn->binary = FALSE;
-	pr->cur_chain = NULL;
 	blkid_probe_chain_reset_position(chn);
+
+	/* restore the original setting
+	 */
+	pr->cur_chain = org_chn;
+	pr->prob_flags = org_prob_flags;
 
 	if (rc != 0)
 		return NULL;
@@ -629,6 +641,13 @@ int blkid_probe_set_device(blkid_probe pr, int fd,
 	if (S_ISBLK(pr->mode) && ioctl(fd, CDROM_GET_CAPABILITY, NULL) >= 0)
 		pr->flags |= BLKID_CDROM_DEV;
 #endif
+
+	DBG(DEBUG_LOWPROBE, printf("ready for low-probing, offset=%jd, size=%jd\n",
+				pr->off, pr->size));
+	DBG(DEBUG_LOWPROBE, printf("whole-disk: %s, regfile: %s\n",
+		blkid_probe_is_wholedisk(pr) ?"YES" : "NO",
+		S_ISREG(pr->mode) ? "YES" : "NO"));
+
 	return 0;
 err:
 	DBG(DEBUG_LOWPROBE,
@@ -672,6 +691,22 @@ int blkid_probe_set_dimension(blkid_probe pr,
 	blkid_probe_reset_buffer(pr);
 
 	return 0;
+}
+
+static inline void blkid_probe_start(blkid_probe pr)
+{
+	if (pr) {
+		pr->cur_chain = NULL;
+		pr->prob_flags = 0;
+	}
+}
+
+static inline void blkid_probe_end(blkid_probe pr)
+{
+	if (pr) {
+		pr->cur_chain = NULL;
+		pr->prob_flags = 0;
+	}
 }
 
 /**
@@ -725,9 +760,10 @@ int blkid_do_probe(blkid_probe pr)
 	do {
 		struct blkid_chain *chn = pr->cur_chain;
 
-		if (!chn)
+		if (!chn) {
+			blkid_probe_start(pr);
 			chn = pr->cur_chain = &pr->chains[0];
-
+		}
 		/* we go to the next chain only when the previous probing
 		 * result was nothing (rc == 1) and when the current chain is
 		 * disabled or we are at end of the current chain (chain->idx +
@@ -742,8 +778,10 @@ int blkid_do_probe(blkid_probe pr)
 
 			if (idx < BLKID_NCHAINS)
 				chn = pr->cur_chain = &pr->chains[idx];
-			else
+			else {
+				blkid_probe_end(pr);
 				return 1;	/* all chains already probed */
+			}
 		}
 
 		chn->binary = FALSE;		/* for sure... */
@@ -775,7 +813,9 @@ int blkid_do_probe(blkid_probe pr)
  *
  * Note about suberblocks chain -- the function does not check for filesystems
  * when a RAID signature is detected.  The function also does not check for
- * collision between RAIDs. The first detected RAID is returned.
+ * collision between RAIDs. The first detected RAID is returned. The function
+ * checks for collision between partition table and RAID signature -- it's
+ * recommended to enable partitions chain together with superblocks chain.
  *
  * Returns: 0 on success, 1 if nothing is detected, -2 if ambivalen result is
  * detected and -1 on case of error.
@@ -786,6 +826,8 @@ int blkid_do_safeprobe(blkid_probe pr)
 
 	if (!pr)
 		return -1;
+
+	blkid_probe_start(pr);
 
 	for (i = 0; i < BLKID_NCHAINS; i++) {
 		struct blkid_chain *chn;
@@ -814,7 +856,7 @@ int blkid_do_safeprobe(blkid_probe pr)
 	}
 
 done:
-	pr->cur_chain = NULL;
+	blkid_probe_end(pr);
 	if (rc < 0)
 		return rc;
 	return count ? 0 : 1;
@@ -838,6 +880,8 @@ int blkid_do_fullprobe(blkid_probe pr)
 
 	if (!pr)
 		return -1;
+
+	blkid_probe_start(pr);
 
 	for (i = 0; i < BLKID_NCHAINS; i++) {
 		int rc;
@@ -867,7 +911,7 @@ int blkid_do_fullprobe(blkid_probe pr)
 	}
 
 done:
-	pr->cur_chain = NULL;
+	blkid_probe_end(pr);
 	if (rc < 0)
 		return rc;
 	return count ? 0 : 1;
@@ -985,6 +1029,48 @@ dev_t blkid_probe_get_devno(blkid_probe pr)
 			pr->devno = sb.st_rdev;
 	}
 	return pr->devno;
+}
+
+/**
+ * blkid_probe_get_wholedisk_devno:
+ * @pr: probe
+ *
+ * Returns: device number of the wholedisk, or 0 for regilar files.
+ */
+dev_t blkid_probe_get_wholedisk_devno(blkid_probe pr)
+{
+	if (!pr->disk_devno) {
+		dev_t devno, disk_devno = 0;
+
+		devno = blkid_probe_get_devno(pr);
+		if (!devno)
+			return 0;
+
+		 if (blkid_devno_to_wholedisk(devno, NULL, 0, &disk_devno) == 0)
+			pr->disk_devno = disk_devno;
+	}
+	return pr->disk_devno;
+}
+
+/**
+ * blkid_probe_is_wholedisk:
+ * @pr: probe
+ *
+ * Returns: 1 if the device is whole-disk or 0.
+ */
+int blkid_probe_is_wholedisk(blkid_probe pr)
+{
+	dev_t devno, disk_devno;
+
+	devno = blkid_probe_get_devno(pr);
+	if (!devno)
+		return 0;
+
+	disk_devno = blkid_probe_get_wholedisk_devno(pr);
+	if (!disk_devno)
+		return 0;
+
+	return devno == disk_devno;
 }
 
 /**

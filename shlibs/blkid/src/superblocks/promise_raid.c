@@ -33,6 +33,8 @@ static int probe_pdcraid(blkid_probe pr, const struct blkid_idmag *mag)
 
 	if (pr->size < 0x40000)
 		return -1;
+	if (!S_ISREG(pr->mode) && !blkid_probe_is_wholedisk(pr))
+		return -1;
 
 	for (i = 0; sectors[i] != 0; i++) {
 		uint64_t off;
@@ -47,8 +49,13 @@ static int probe_pdcraid(blkid_probe pr, const struct blkid_idmag *mag)
 			return -1;
 
 		if (memcmp(pdc->sig, PDC_SIGNATURE,
-				sizeof(PDC_SIGNATURE) - 1) == 0)
+				sizeof(PDC_SIGNATURE) - 1) == 0) {
+
+			if (blkid_probe_set_magic(pr, off, sizeof(pdc->sig),
+						(unsigned char *) pdc->sig))
+				return -1;
 			return 0;
+		}
 	}
 	return -1;
 }
