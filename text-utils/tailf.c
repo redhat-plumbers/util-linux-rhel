@@ -57,7 +57,7 @@ tailf(const char *filename, int lines)
 	if (!(str = fopen(filename, "r")))
 		err(EXIT_FAILURE, _("cannot open \"%s\" for read"), filename);
 
-	buf = malloc(lines * BUFSIZ);
+	buf = malloc((lines ? lines : 1) * BUFSIZ);
 	p = buf;
 	while (fgets(p, BUFSIZ, str)) {
 		if (++tail >= lines) {
@@ -195,11 +195,11 @@ int main(int argc, char **argv)
 	for (; argc > 0 && argv[0][0] == '-'; argc--, argv++) {
 		if (!strcmp(*argv, "-n") || !strcmp(*argv, "--lines")) {
 			argc--;	argv++;
-			if (argc > 0 && (lines = atoi(argv[0])) <= 0)
+			if (argc > 0 && (lines = atoi(argv[0])) < 0)
 				errx(EXIT_FAILURE, _("invalid number of lines"));
 		}
 		else if (isdigit(argv[0][1])) {
-			if ((lines = atoi(*argv + 1)) <= 0)
+			if ((lines = atoi(*argv + 1)) < 0)
 				errx(EXIT_FAILURE, _("invalid number of lines"));
 		}
 		else
