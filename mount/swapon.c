@@ -30,6 +30,21 @@
 # include <sys/swap.h>
 #endif
 
+#ifndef SWAP_FLAG_DISCARD
+# define SWAP_FLAG_DISCARD	0x10000 /* enable discard for swap */
+#endif
+
+#ifndef SWAP_FLAG_DISCARD_ONCE
+# define SWAP_FLAG_DISCARD_ONCE 0x20000 /* discard swap area at swapon-time */
+#endif
+
+#ifndef SWAP_FLAG_DISCARD_PAGES
+# define SWAP_FLAG_DISCARD_PAGES 0x40000 /* discard page-clusters after use */
+#endif
+
+#define SWAP_FLAGS_DISCARD_VALID (SWAP_FLAG_DISCARD | SWAP_FLAG_DISCARD_ONCE | \
+				  SWAP_FLAG_DISCARD_PAGES)
+
 #ifndef SWAPON_HAS_TWO_ARGS
 /* libc is insane, let's call the kernel */
 # include <sys/syscall.h>
@@ -54,6 +69,7 @@ enum {
 
 int all;
 int priority = -1;	/* non-prioritized swap by default */
+static int discard;     /* don't send swap discards by default */
 
 /* If true, don't complain if the device/file doesn't exist */
 int ifexists;
@@ -65,6 +81,7 @@ char *progname;
 static struct option longswaponopts[] = {
 		/* swapon only */
 	{ "priority", required_argument, 0, 'p' },
+	{ "discard",  optional_argument, 0, 'd' },
 	{ "ifexists", 0, 0, 'e' },
 	{ "summary", 0, 0, 's' },
 	{ "fixpgsz", 0, 0, 'f' },
@@ -76,7 +93,7 @@ static struct option longswaponopts[] = {
 	{ NULL, 0, 0, 0 }
 };
 
-static struct option *longswapoffopts = &longswaponopts[4];
+static struct option *longswapoffopts = &longswaponopts[5];
 
 static int cannot_find(const char *special);
 
@@ -89,16 +106,21 @@ static int cannot_find(const char *special);
 	" <file>                               name of file to be used\n\n"))
 
 static void
-swapon_usage(FILE *fp, int n) {
-	fprintf(fp, _("\nUsage:\n"
-	" %1$s -a [-e] [-v] [-f]             enable all swaps from /etc/fstab\n"
-	" %1$s [-p priority] [-v] [-f] <special>  enable given swap\n"
-	" %1$s -s                            display swap usage summary\n"
-	" %1$s -h                            display help\n"
-	" %1$s -V                            display version\n\n"), progname);
+swapon_usage(FILE *out, int n) {
+	fprintf(out, _("\nUsage:\n"));
+	fprintf(out, _(" %s [options] [<special>]\n"), progname);
 
-	PRINT_USAGE_SPECIAL(fp);
+	fputs(_(" -a, --all                enable all swaps from /etc/fstab\n"
+		" -d, --discard[=<policy>] enable swap discards, if supported by device\n"
+		" -e, --ifexists           silently skip devices that do not exist\n"
+		" -f, --fixpgsz            reinitialize the swap space if necessary\n"
+		" -p, --priority <prio>    specify the priority of the swap device\n"
+		" -s, --summary            display summary about used swap devices\n"
+		" -h, --help               display help\n"
+		" -V, --version            display version\n"
+		" -v, --verbose            verbose output\n\n"), out);
 
+	PRINT_USAGE_SPECIAL(out);
 	exit(n);
 }
 
@@ -471,7 +493,7 @@ err:
 }
 
 static int
-do_swapon(const char *orig_special, int prio, int canonic) {
+do_swapon(const char *orig_special, int prio, int fl_discard, int canonic) {
 	int status;
 	const char *special = orig_special;
 	int flags = 0;
@@ -497,6 +519,23 @@ do_swapon(const char *orig_special, int prio, int canonic) {
 			   << SWAP_FLAG_PRIO_SHIFT);
 	}
 #endif
+	/*
+	 * Validate the discard flags passed and set them
+	 * accordingly before calling sys_swapon.
+	 */
+	if (fl_discard && !(fl_discard & ~SWAP_FLAGS_DISCARD_VALID)) {
+		/*
+		 * If we get here with both discard policy flags set,
+		 * we just need to tell the kernel to enable discards
+		 * and it will do correctly, just as we expect.
+		 */
+		if ((fl_discard & SWAP_FLAG_DISCARD_ONCE) &&
+		    (fl_discard & SWAP_FLAG_DISCARD_PAGES))
+			flags |= SWAP_FLAG_DISCARD;
+		else
+			flags |= fl_discard;
+	}
+
 	status = swapon(special, flags);
 	if (status < 0)
 		warn(_("%s: swapon failed"), orig_special);
@@ -511,15 +550,15 @@ cannot_find(const char *special) {
 }
 
 static int
-swapon_by_label(const char *label, int prio) {
+swapon_by_label(const char *label, int prio, int dsc) {
 	const char *special = fsprobe_get_devname_by_label(label);
-	return special ? do_swapon(special, prio, CANONIC) : cannot_find(label);
+	return special ? do_swapon(special, prio, dsc, CANONIC) : cannot_find(label);
 }
 
 static int
-swapon_by_uuid(const char *uuid, int prio) {
+swapon_by_uuid(const char *uuid, int prio, int dsc) {
 	const char *special = fsprobe_get_devname_by_uuid(uuid);
-	return special ? do_swapon(special, prio, CANONIC) : cannot_find(uuid);
+	return special ? do_swapon(special, prio, dsc, CANONIC) : cannot_find(uuid);
 }
 
 static int
@@ -574,7 +613,7 @@ swapon_all(void) {
 	while ((fstab = getmntent(fp)) != NULL) {
 		const char *special;
 		int skip = 0;
-		int pri = priority;
+		int pri = priority, dsc = discard;
 		char *opt, *opts;
 
 		if (!streq(fstab->mnt_type, MNTTYPE_SWAP))
@@ -588,7 +627,22 @@ swapon_all(void) {
 				pri = atoi(opt+4);
 			if (strcmp(opt, "noauto") == 0)
 				skip = 1;
+			if (strncmp(opt, "discard", 7) == 0) {
+				char *dscarg = opt + 7;
+				dsc |= SWAP_FLAG_DISCARD;
+				if (*dscarg == '=') {
+					dscarg++;
+					/* only single-time discards are wanted */
+					if (strcmp(dscarg, "once") == 0)
+						dsc |= SWAP_FLAG_DISCARD_ONCE;
+
+					/* do discard for every released swap page */
+					if (strcmp(dscarg, "pages") == 0)
+						dsc |= SWAP_FLAG_DISCARD_PAGES;
+				}
+			}
 		}
+
 		free(opts);
 
 		if (skip)
@@ -603,7 +657,7 @@ swapon_all(void) {
 
 		if (!is_in_proc_swaps(special) &&
 		    (!ifexists || !access(special, R_OK)))
-			status |= do_swapon(special, pri, CANONIC);
+			status |= do_swapon(special, pri, dsc, CANONIC);
 
 		free((void *) special);
 	}
@@ -636,11 +690,25 @@ main_swapon(int argc, char *argv[]) {
 	int status = 0;
 	int c, i;
 
-	while ((c = getopt_long(argc, argv, "ahefp:svVL:U:",
+	while ((c = getopt_long(argc, argv, "ad::hefp:svVL:U:",
 				longswaponopts, NULL)) != -1) {
 		switch (c) {
 		case 'a':		/* all */
 			++all;
+			break;
+		case 'd':
+			discard |= SWAP_FLAG_DISCARD;
+			if (optarg) {
+				if (*optarg == '=')
+					optarg++;
+
+				if (strcmp(optarg, "once") == 0)
+					discard |= SWAP_FLAG_DISCARD_ONCE;
+				else if (strcmp(optarg, "pages") == 0)
+					discard |= SWAP_FLAG_DISCARD_PAGES;
+				else
+					errx(EXIT_FAILURE, _("unsupported discard policy: %s"), optarg);
+			}
 			break;
 		case 'h':		/* help */
 			swapon_usage(stdout, 0);
@@ -688,13 +756,13 @@ main_swapon(int argc, char *argv[]) {
 		status |= swapon_all();
 
 	for (i = 0; i < llct; i++)
-		status |= swapon_by_label(llist[i], priority);
+		status |= swapon_by_label(llist[i], priority, discard);
 
 	for (i = 0; i < ulct; i++)
-		status |= swapon_by_uuid(ulist[i], priority);
+		status |= swapon_by_uuid(ulist[i], priority, discard);
 
 	while (*argv != NULL)
-		status |= do_swapon(*argv++, priority, !CANONIC);
+		status |= do_swapon(*argv++, priority, discard, !CANONIC);
 
 	return status;
 }
