@@ -255,6 +255,8 @@ struct lslogins_control {
 	unsigned int time_mode;
 
 	const char *journal_path;
+
+	unsigned int ulist_on : 1;
 };
 
 /* these have to remain global since there's no other reasonable way to pass
@@ -464,20 +466,23 @@ static int parse_btmp(struct lslogins_control *ctl, char *path)
 static int get_sgroups(gid_t **list, size_t *len, struct passwd *pwd)
 {
 	size_t n = 0;
+	int ngroups = 0;
 
 	*len = 0;
 	*list = NULL;
 
 	/* first let's get a supp. group count */
-	getgrouplist(pwd->pw_name, pwd->pw_gid, *list, (int *) len);
-	if (!*len)
+	getgrouplist(pwd->pw_name, pwd->pw_gid, *list, &ngroups);
+	if (!ngroups)
 		return -1;
 
-	*list = xcalloc(1, *len * sizeof(gid_t));
+	*list = xcalloc(1, ngroups * sizeof(gid_t));
 
 	/* now for the actual list of GIDs */
-	if (-1 == getgrouplist(pwd->pw_name, pwd->pw_gid, *list, (int *) len))
+	if (-1 == getgrouplist(pwd->pw_name, pwd->pw_gid, *list, &ngroups))
 		return -1;
+
+	*len = (size_t) ngroups;
 
 	/* getgroups also returns the user's primary GID - dispose of it */
 	while (n < *len) {
@@ -722,41 +727,48 @@ static int get_ulist(struct lslogins_control *ctl, char *logins, char *groups)
 	*arsiz = 32;
 	*ar = xcalloc(1, sizeof(char *) * (*arsiz));
 
-	while ((u = strtok(logins, ","))) {
-		logins = NULL;
+	if (logins) {
+		while ((u = strtok(logins, ","))) {
+			logins = NULL;
 
-		/* user specified by UID? */
-		if (!str_to_uint(u, &uid)) {
-			pwd = getpwuid(uid);
-			if (!pwd)
-				continue;
-			u = pwd->pw_name;
-		}
-		(*ar)[i++] = xstrdup(u);
-
-		if (i == *arsiz)
-			*ar = xrealloc(*ar, sizeof(char *) * (*arsiz += 32));
-	}
-	/* FIXME: this might lead to duplicit entries, although not visible
-	 * in output, crunching a user's info multiple times is very redundant */
-	while ((g = strtok(groups, ","))) {
-		groups = NULL;
-
-		/* user specified by GID? */
-		if (!str_to_uint(g, &gid))
-			grp = getgrgid(gid);
-		else
-			grp = getgrnam(g);
-
-		if (!grp)
-			continue;
-
-		while ((u = grp->gr_mem[n++])) {
+			/* user specified by UID? */
+			if (!str_to_uint(u, &uid)) {
+				pwd = getpwuid(uid);
+				if (!pwd)
+					continue;
+				u = pwd->pw_name;
+			}
 			(*ar)[i++] = xstrdup(u);
 
 			if (i == *arsiz)
 				*ar = xrealloc(*ar, sizeof(char *) * (*arsiz += 32));
 		}
+		ctl->ulist_on = 1;
+	}
+	if (groups) {
+		/* FIXME: this might lead to duplicit entries, although not visible
+		 * in output, crunching a user's info multiple times is very redundant */
+		while ((g = strtok(groups, ","))) {
+			n = 0;
+			groups = NULL;
+
+			/* user specified by GID? */
+			if (!str_to_uint(g, &gid))
+				grp = getgrgid(gid);
+			else
+				grp = getgrnam(g);
+
+			if (!grp)
+				continue;
+
+			while ((u = grp->gr_mem[n++])) {
+				(*ar)[i++] = xstrdup(u);
+
+				if (i == *arsiz)
+					*ar = xrealloc(*ar, sizeof(char *) * (*arsiz += 32));
+			}
+		}
+		ctl->ulist_on = 1;
 	}
 	*arsiz = i;
 	return 0;
@@ -794,7 +806,7 @@ static int get_user(struct lslogins_control *ctl, struct lslogins_user **user,
 		    const char *username)
 {
 	*user = get_user_info(ctl, username);
-	if (!*user && errno)
+	if (!*user)
 		if (IS_REAL_ERRNO(errno))
 			return -1;
 	return 0;
@@ -812,7 +824,7 @@ static int create_usertree(struct lslogins_control *ctl)
 	struct lslogins_user *user = NULL;
 	size_t n = 0;
 
-	if (*ctl->ulist) {
+	if (ctl->ulist_on) {
 		while (n < ctl->ulsiz) {
 			if (get_user(ctl, &user, ctl->ulist[n]))
 				return -1;
@@ -978,6 +990,8 @@ static int print_pretty(struct tt *tb)
 	struct list_head *p;
 	int n = 0;
 
+	if (!ln || !ln->data)
+		return 0;
 
 	list_for_each(p, &tb->tb_columns) {
 		struct tt_column *cl = list_entry(p, struct tt_column, cl_columns);
@@ -1296,7 +1310,8 @@ int main(int argc, char *argv[])
 	if (require_btmp())
 		parse_btmp(ctl, path_btmp);
 
-	get_ulist(ctl, logins, groups);
+	if (logins || groups)
+		get_ulist(ctl, logins, groups);
 
 	if (create_usertree(ctl))
 		return EXIT_FAILURE;
