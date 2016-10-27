@@ -120,14 +120,20 @@ struct options {
     char   *initstring;			/* modem init string */
     char   *issue;			/* alternative issue file */
     int     numspeed;			/* number of baud rates to try */
+    int     clocal;			/* CLOCAL_MODE_* */
     int     speeds[MAX_SPEED];		/* baud rates to be tried */
     int     eightbits;			/* assume 8bit-clean tty */
+};
+
+enum {
+	CLOCAL_MODE_AUTO = 0,
+	CLOCAL_MODE_ALWAYS,
+	CLOCAL_MODE_NEVER
 };
 
 #define	F_PARSE		(1<<0)		/* process modem status messages */
 #define	F_ISSUE		(1<<1)		/* display /etc/issue */
 #define	F_RTSCTS	(1<<2)		/* enable RTS/CTS flow control */
-#define F_LOCAL		(1<<3)		/* force local */
 #define F_INITSTRING    (1<<4)		/* initstring is set */
 #define F_WAITCRLF	(1<<5)		/* wait for CR or LF */
 #define F_CUSTISSUE	(1<<6)		/* give alternative issue file */
@@ -207,7 +213,7 @@ int main P_((int argc, char **argv));
 void parse_args P_((int argc, char **argv, struct options *op));
 void parse_speeds P_((struct options *op, char *arg));
 void update_utmp P_((char *line));
-void open_tty P_((char *tty, struct termios *tp, int local));
+void open_tty P_((char *tty, struct termios *tp));
 void termio_init P_((struct termios *tp, int speed, struct options *op));
 void auto_baud P_((struct termios *tp));
 void do_prompt P_((struct options *op, struct termios *tp));
@@ -297,7 +303,7 @@ main(argc, argv)
 
     debug("calling open_tty\n");
     /* Open the tty as standard { input, output, error }. */
-    open_tty(options.tty, &termios, options.flags & F_LOCAL);
+    open_tty(options.tty, &termios);
 
     tcsetpgrp(0, getpid());
     /* Initialize the termios settings (raw mode, eight-bit, blocking i/o). */
@@ -310,7 +316,8 @@ main(argc, argv)
 	write(1, options.initstring, strlen(options.initstring));
     }
 
-    if (!(options.flags & F_LOCAL)) {
+
+    if (options.clocal != CLOCAL_MODE_ALWAYS) {
 	/* go to blocking write mode unless -L is specified */
 	fcntl(1, F_SETFL, fcntl(1, F_GETFL, 0) & ~O_NONBLOCK);
     }
@@ -382,7 +389,7 @@ parse_args(argc, argv, op)
     extern int optind;			/* getopt */
     int     c;
 
-    while (isascii(c = getopt(argc, argv, "8I:LH:Ef:hil:mt:wUn"))) {
+    while (isascii(c = getopt(argc, argv, "8I:L::H:Ef:hil:mt:wUn"))) {
 	switch (c) {
 	case '8':
 	    op->eightbits = 1;
@@ -427,9 +434,20 @@ parse_args(argc, argv, op)
 	    op->flags |= F_INITSTRING;
 	    break;
 
-	case 'L':				/* force local */
- 	    op->flags |= F_LOCAL;
- 	    break;
+	case 'L':
+	    /* -L and -L=always have the same meaning */
+	    op->clocal = CLOCAL_MODE_ALWAYS;
+	    if (optarg) {
+		if (strcmp(optarg, "=always") == 0)
+		    op->clocal = CLOCAL_MODE_ALWAYS;
+		else if (strcmp(optarg, "=never") == 0)
+		    op->clocal = CLOCAL_MODE_NEVER;
+		else if (strcmp(optarg, "=auto") == 0)
+		    op->clocal = CLOCAL_MODE_AUTO;
+		else
+		    error(_("unssuported -L mode argument"));
+	    }
+	    break;
 	case 'H':                               /* fake login host */
 	    fakehost = optarg;
 	    break;
@@ -619,10 +637,9 @@ update_utmp(line)
 
 /* open_tty - set up tty as standard { input, output, error } */
 void
-open_tty(tty, tp, local)
+open_tty(tty, tp)
      char   *tty;
      struct termios *tp;
-     int    local;
 {
     /* Get rid of the present standard { output, error} if any. */
 
@@ -721,8 +738,18 @@ termio_init(tp, speed, op)
     tp->c_cflag = CS8 | HUPCL | CREAD | (tp->c_cflag & CLOCAL);
     cfsetispeed(tp, speed);
     cfsetospeed(tp, speed);
-    if (op->flags & F_LOCAL) {
-	tp->c_cflag |= CLOCAL;
+
+    /* The default is to follow setting from kernel, but it's possible
+     * to explicitly remove/add CLOCAL flag by -L[=<mode>]*/
+    switch (op->clocal) {
+    case CLOCAL_MODE_ALWAYS:
+	tp->c_cflag |= CLOCAL;		/* -L or -L=always */
+	break;
+    case CLOCAL_MODE_NEVER:
+	tp->c_cflag &= ~CLOCAL;		/* -L=never */
+	break;
+    case CLOCAL_MODE_AUTO:		/* -L=auto */
+	break;
     }
 
     tp->c_iflag = tp->c_lflag = tp->c_oflag = 0;
@@ -1215,7 +1242,11 @@ bcode(s)
 void
 usage()
 {
-    fprintf(stderr, _("Usage: %s [-8hiLmUw] [-l login_program] [-t timeout] [-I initstring] [-H login_host] baud_rate,... line [termtype]\nor\t[-hiLmw] [-l login_program] [-t timeout] [-I initstring] [-H login_host] line baud_rate,... [termtype]\n"), progname);
+
+    fprintf(stderr, _(" %1$s [options] line [baud_rate,...] [termtype]\n"
+	              " %1$s [options] baud_rate,... line [termtype]\n"),
+		    program_invocation_short_name);
+    fprintf(stderr, _("For more details see agetty(8)."));
     exit(1);
 }
 
