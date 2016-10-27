@@ -43,6 +43,20 @@ findfs_LDADD = $(ul_libblkid_la)
 findfs_CFLAGS = $(AM_CFLAGS) -I$(ul_libblkid_incdir)
 wipefs_LDADD = $(ul_libblkid_la)
 wipefs_CFLAGS = $(AM_CFLAGS) -I$(ul_libblkid_incdir)
+
+bin_PROGRAMS += lsblk
+dist_man_MANS += lsblk.8
+lsblk_SOURCES = lsblk.c \
+		$(top_srcdir)/lib/canonicalize.c \
+		$(top_srcdir)/lib/ismounted.c \
+		$(top_srcdir)/lib/tt.c \
+		$(top_srcdir)/lib/strutils.c \
+		$(top_srcdir)/lib/mbsalign.c \
+		$(top_srcdir)/lib/at.c \
+		$(top_srcdir)/lib/sysfs.c
+lsblk_LDADD = $(ul_libblkid_la)
+lsblk_CFLAGS = $(AM_CFLAGS) -I$(ul_libblkid_incdir)
+
 if HAVE_STATIC_BLKID
 sbin_PROGRAMS += blkid.static
 blkid_static_SOURCES = $(blkid_SOURCES)
