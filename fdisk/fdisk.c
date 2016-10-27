@@ -2843,9 +2843,7 @@ try(char *device, int user_specified) {
 		} else if (gb < 0) { /* no DOS signature */
 			list_disk_geometry();
 			if (!aix_label && !mac_label && btrydev(device) < 0)
-				fprintf(stderr,
-					_("Disk %s doesn't contain a valid "
-					  "partition table\n"), device);
+				; /* nothing, no aix, mac or bsd signature */
 		} else {
 			list_table(0);
 		}
