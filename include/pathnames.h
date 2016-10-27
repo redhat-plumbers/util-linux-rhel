@@ -23,6 +23,7 @@
 #define _PATH_WTMPLOCK		"/etc/wtmplock"
 
 #define	_PATH_HUSHLOGIN		".hushlogin"
+#define _PATH_HUSHLOGIN_GLOBAL	"/etc/hushlogins"
 
 #ifndef _PATH_MAILDIR
 #define	_PATH_MAILDIR		"/var/spool/mail"

@@ -883,15 +883,23 @@ main(int argc, char **argv)
 
     endpwent();
 
-    /* This requires some explanation: As root we may not be able to
-       read the directory of the user if it is on an NFS mounted
-       filesystem. We temporarily set our effective uid to the user-uid
-       making sure that we keep root privs. in the real uid.
-
-       A portable solution would require a fork(), but we rely on Linux
-       having the BSD setreuid() */
-
-    {
+    if (access(_PATH_HUSHLOGIN_GLOBAL, F_OK) == 0)
+	/*
+	 * quiet mode is enabled for whole system
+	 */
+	quietlog = 1;
+    else {
+        /*
+	 * Check per accout setting.
+	 *
+	 * This requires some explanation: As root we may not be able to
+         * read the directory of the user if it is on an NFS mounted
+         * filesystem. We temporarily set our effective uid to the user-uid
+         * making sure that we keep root privs. in the real uid.
+	 *
+	 * A portable solution would require a fork(), but we rely on Linux
+	 * having the BSD setreuid()
+	 */
 	char tmpstr[MAXPATHLEN];
 	uid_t ruid = getuid();
 	gid_t egid = getegid();
