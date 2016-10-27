@@ -58,7 +58,7 @@ but may also be an entire disk, like
 .RE
 If the partition argument is omitted,
 .B sfdisk
-will list the sizes of all disks, and the total:
+will list the sizes of all block devices, and the total:
 .br
 .RS
 .nf
@@ -81,7 +81,7 @@ The second type of invocation:
 .RB [ options ]
 .I device
 will list the partitions on this device.
-If the device argument is omitted, the partitions on all hard disks
+If the device argument is omitted, the partitions on all hard block devices
 are listed.
 .br
 .nf
@@ -121,7 +121,7 @@ will cause
 to read the specification for the desired partitioning of
 .I device
 from its standard input, and then to change the partition tables
-on that disk. Thus, it is possible to use
+on that block device. Thus, it is possible to use
 .B sfdisk
 from a shell script. When
 .B sfdisk
@@ -143,7 +143,7 @@ As a precaution, one can save the sectors changed by
 .RE
 .LP
 Then, if you discover that you did something stupid before anything
-else has been written to disk, it may be possible to recover
+else has been written to block device, it may be possible to recover
 the old situation with
 .RS
 .nf
@@ -157,7 +157,7 @@ the old situation with
 (This is not the same as saving the old partition table:
 a readable version of the old partition table can be saved
 using the \-d option. However, if you create logical partitions,
-the sectors describing them are located somewhere on disk,
+the sectors describing them are located somewhere on block device
 possibly on sectors that were not part of the partition table
 before. Thus, the information the \-O option saves is not a binary
 version of the output of \-d.)
@@ -181,10 +181,10 @@ Print the recognized types (system Id's).
 List the size of a partition.
 .TP
 .BR \-g " or " \-\-show\-geometry
-List the kernel's idea of the geometry of the indicated disk(s).
+List the kernel's idea of the geometry of the indicated block device(s)
 .TP
 .BR \-G " or " \-\-show\-pt\-geometry
-List the geometry of the indicated disks guessed by looking at
+List the geometry of the indicated block devices guessed by looking at
 the partition table.
 .TP
 .BR \-l " or " \-\-list
@@ -294,18 +294,18 @@ to be relative to the starting cylinder boundary of the outer one,
 always let extended partitions start at cylinder boundaries if
 DOS and Linux should interpret the partition table in the same way.
 Of course one can only know where cylinder boundaries are when
-one knows what geometry DOS will use for this disk.)
+one knows what geometry DOS will use for this block device.)
 .TP
 .BR \-\-IBM " or " \-\-leave\-last
 Certain IBM diagnostic programs assume that they can use the
-last cylinder on a disk for disk-testing purposes. If you think
+last cylinder on a block device for disk-testing purposes. If you think
 you might ever run such programs, use this option to tell
 .B sfdisk
 that it should not allocate the last cylinder.
 Sometimes the last cylinder contains a bad sector table.
 .TP
 .B \-n
-Go through all the motions, but do not actually write to disk.
+Go through all the motions, but do not actually write to block device.
 .TP
 .B \-R
 Only execute the BLKRRPART ioctl (to make the kernel re-read
@@ -317,7 +317,7 @@ then something still uses the device, and you still have to unmount
 some file system, or say swapoff to some swap partition.
 .TP
 .B \-\-no\-reread
-When starting a repartitioning of a disk, sfdisk checks that this disk
+When starting a repartitioning of a block device, sfdisk checks that this device
 is not mounted, or in use as a swap device, and refuses to continue
 if it is. This option suppresses the test. (On the other hand, the \-f
 option would force sfdisk to continue even when this test fails.)
@@ -328,7 +328,7 @@ that are going to be overwritten to
 .I file
 (where hopefully
 .I file
-resides on another disk, or on a floppy).
+resides on another block device, or on a floppy).
 .TP
 .BI \-I " file"
 After destroying your filesystems with an unfortunate
@@ -337,7 +337,7 @@ command, you would have been able to restore the old situation
 if only you had preserved it using the \-O flag.
 
 .SH THEORY
-Block 0 of a disk (the Master Boot Record) contains among
+Block 0 of a block device (the Master Boot Record) contains among
 other things four partition descriptors. The partitions
 described here are called
 .I primary
@@ -361,7 +361,7 @@ struct partition {
 The two hsc fields indicate head, sector and cylinder of the
 begin and the end of the partition. Since each hsc field only
 takes 3 bytes, only 24 bits are available, which does not
-suffice for big disks (say > 8GB). In fact, due to the wasteful
+suffice for big block devices (say > 8GB). In fact, due to the wasteful
 representation (that uses a byte for the number of heads, which
 is typically 16), problems already start with 0.5GB.
 However Linux does not use these fields, and problems can arise
@@ -410,7 +410,7 @@ When a field is absent or empty, a default value is used.
 .LP
 The <c,h,s> parts can (and probably should) be omitted -
 .B sfdisk
-computes them from <start> and <size> and the disk geometry
+computes them from <start> and <size> and the block device geometry
 as given by the kernel or specified using the \-H, \-S, \-C flags.
 .LP
 Bootable is specified as [*|\-], with as default not-bootable.
@@ -427,7 +427,7 @@ is EXTENDED_PARTITION (5), and X is LINUX_EXTENDED (85).
 The default value of start is the first nonassigned sector/cylinder/...
 .LP
 The default value of size is as much as possible (until next
-partition or end-of-disk).
+partition or end-of-device).
 .LP
 However, for the four partitions inside an extended partition,
 the defaults are: Linux partition, Extended partition, Empty, Empty.
@@ -506,7 +506,7 @@ the first 512 bytes of the partition.
 .B BE EXTREMELY CAREFUL
 if you use the
 .B dd
-command, since a small typo can make all of the data on your disk useless.
+command, since a small typo can make all of the data on your block device useless.
 
 For best results, you should always use an OS-specific partition table
 program.  For example, you should make DOS partitions with the DOS FDISK
@@ -522,7 +522,7 @@ was quite possibly due to DRDOS-6.0's FDISK command.  Unless I created
 a blank track or cylinder between the DRDOS partition and the
 immediately following one, DRDOS would happily stamp all over the
 start of the next partition.  Mind you, as long as I keep a little
-free disk space after any DRDOS partition, I don't have any other
+free device space after any DRDOS partition, I don't have any other
 problems with the two coexisting on the one drive.'
 
 A. V. Le Blanc writes in README.efdisk: `Dr. DOS 5.0 and 6.0 has been
