@@ -223,7 +223,7 @@ umount_one (const char *spec, const char *node, const char *type,
 	 * Call umount.TYPE for types that require a separate umount program.
 	 * All such special things must occur isolated in the types string.
 	 */
-	if (check_special_umountprog(spec, node, type, &status))
+	if (!fake && check_special_umountprog(spec, node, type, &status))
 		return status;
 
 	block_signals(SIG_BLOCK);
