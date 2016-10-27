@@ -475,6 +475,10 @@ int mnt_fs_append_options(mnt_fs *fs, const char *optstr)
 	if (!rc && u)
 	       rc = mnt_optstr_append_option(&fs->user_optstr, u, NULL);
 
+	free(u);
+	free(v);
+	free(f);
+
 	return rc;
 }
 
@@ -509,6 +513,10 @@ int mnt_fs_prepend_options(mnt_fs *fs, const char *optstr)
 		rc = mnt_optstr_prepend_option(&fs->fs_optstr, f, NULL);
 	if (!rc && u)
 		rc = mnt_optstr_prepend_option(&fs->user_optstr, u, NULL);
+
+	free(u);
+	free(v);
+	free(f);
 
 	return rc;
 }

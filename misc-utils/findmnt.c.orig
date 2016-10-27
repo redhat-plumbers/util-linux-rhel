@@ -423,8 +423,7 @@ static mnt_fs *get_next_fs(mnt_tab *tb, mnt_iter *itr)
 		/*
 		 * Print whole file
 		 */
-		if (mnt_tab_next_fs(tb, itr, &fs) != 0)
-			return NULL;
+		mnt_tab_next_fs(tb, itr, &fs);
 
 	} else if (is_mount_compatible_mode()) {
 		/*
