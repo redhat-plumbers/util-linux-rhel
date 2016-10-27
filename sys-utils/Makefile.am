@@ -25,6 +25,13 @@ lscpu_SOURCES = lscpu.c \
 	$(top_srcdir)/lib/tt.c \
 	$(top_srcdir)/lib/mbsalign.c
 
+sbin_PROGRAMS += chcpu
+chcpu_SOURCES = chcpu.c \
+	$(top_srcdir)/lib/cpuset.c \
+	$(top_srcdir)/lib/path.c \
+	$(top_srcdir)/lib/strutils.c
+dist_man_MANS += chcpu.8
+
 cytune_SOURCES = cytune.c cyclades.h
 tunelp_SOURCES = tunelp.c lp.h
 fstrim_SOURCES = fstrim.c $(top_srcdir)/lib/strutils.c
