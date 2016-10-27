@@ -423,7 +423,7 @@ isint2:					switch(fu->bcnt) {
 		if (!fu->nextfu && fs->bcnt < blocksize &&
 		    !(fu->flags&F_SETREP) && fu->bcnt)
 			fu->reps += (blocksize - fs->bcnt) / fu->bcnt;
-		if (fu->reps > 1) {
+		if (fu->reps > 1 && fu->nextpr) {
 			for (pr = fu->nextpr;; pr = pr->nextpr)
 				if (!pr->nextpr)
 					break;
