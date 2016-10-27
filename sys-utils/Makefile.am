@@ -62,6 +62,12 @@ usrbin_exec_PROGRAMS += unshare
 unshare_SOURCES = unshare.c \
 	$(top_srcdir)/lib/exec_shell.c
 dist_man_MANS += unshare.1
+
+usrbin_exec_PROGRAMS += nsenter
+nsenter_SOURCES = nsenter.c \
+	$(top_srcdir)/lib/exec_shell.c \
+	$(top_srcdir)/lib/strutils.c
+dist_man_MANS += nsenter.1
 endif
 
 if BUILD_ARCH
