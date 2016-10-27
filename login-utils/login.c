@@ -165,7 +165,7 @@ static void dolastlog (int quiet);
  * This bounds the time given to login.  Not a define so it can
  * be patched on machines where it's too small.
  */
-int     timeout = 60;
+int     timeout = 180;
 
 struct passwd *pwd;
 
