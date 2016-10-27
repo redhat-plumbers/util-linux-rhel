@@ -11,14 +11,21 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <fcntl.h>
+#ifdef HAVE_MNTENT_H
 #include <mntent.h>
+#endif
 #include <string.h>
 #include <sys/stat.h>
 #include <ctype.h>
 #include <sys/param.h>
+#ifdef __APPLE__
+#include <sys/ucred.h>
+#include <sys/mount.h>
+#endif
 
 #include "pathnames.h"
 #include "ismounted.h"
+#include "c.h"
 
 #ifdef HAVE_MNTENT_H
 /*
@@ -164,6 +171,10 @@ static int check_mntent(const char *file, int *mount_flags,
 				   mtpt, mtlen);
 	if (retval == 0 && (*mount_flags != 0))
 		return 0;
+	if (access("/proc/mounts", R_OK) == 0) {
+		*mount_flags = 0;
+		return retval;
+	}
 #endif /* __linux__ */
 #if defined(MOUNTED) || defined(_PATH_MOUNTED)
 #ifndef MOUNTED

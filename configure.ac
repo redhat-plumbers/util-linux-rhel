@@ -170,6 +170,9 @@ AC_CHECK_FUNCS(
 	jrand48 \
 	lchown \
 	llseek \
+	strndup \
+	strnlen \
+	strnchr \
 	lseek64 \
 	strtoull \
 	sysconf \

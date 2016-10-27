@@ -76,6 +76,9 @@
 #define _PATH_PROC_PARTITIONS	"/proc/partitions"
 #define _PATH_PROC_DEVICES	"/proc/devices"
 
+#define _PATH_SYS_BLOCK		"/sys/block"
+#define _PATH_SYS_DEVBLOCK	"/sys/dev/block"
+
 #ifndef _PATH_MOUNTED
 # ifdef MOUNTED					/* deprecated */
 #  define _PATH_MOUNTED		MOUNTED
