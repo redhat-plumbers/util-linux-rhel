@@ -370,11 +370,13 @@ getfs_by_dir (const char *dir) {
 	struct mntentchn *mc, *mc0;
 	char *cdir;
 
+	/* original paths */
 	mc0 = fstab_head();
 	for (mc = mc0->nxt; mc && mc != mc0; mc = mc->nxt)
 		if (streq(mc->m.mnt_dir, dir))
 			return mc;
 
+	/* canonicalize @dir */
 	cdir = canonicalize(dir);
 	for (mc = mc0->nxt; mc && mc != mc0; mc = mc->nxt) {
 		if (streq(mc->m.mnt_dir, cdir)) {
@@ -382,6 +384,18 @@ getfs_by_dir (const char *dir) {
 			return mc;
 		}
 	}
+
+	/* canonicalize all paths */
+	for (mc = mc0->nxt; mc && mc != mc0; mc = mc->nxt) {
+		char *dr = canonicalize(mc->m.mnt_dir);
+		int ok = streq(dr, cdir);
+		free(dr);
+		if (ok) {
+			free(cdir);
+			return mc;
+		}
+	}
+
 	free(cdir);
 	return NULL;
 }
