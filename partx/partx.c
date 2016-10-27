@@ -178,6 +178,8 @@ main(int argc, char **argv){
 		while (upper == 0 || lower <= upper) {
 			int err;
 
+			if (lower > MAXSLICES)
+				break;
 			pt.pno = lower;
 			pt.start = 0;
 			pt.length = 0;
@@ -295,6 +297,9 @@ main(int argc, char **argv){
 				}
 			    }
 			    for (j=0; j<n; j++) {
+			        /* skip unused/empty partitions */
+				if (slices[j].size == 0)
+				    continue;
 				pt.pno = lower+j;
 				pt.start = 512 * (long long) slices[j].start;
 				pt.length = 512 * (long long) slices[j].size;
