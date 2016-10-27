@@ -31,6 +31,7 @@
 #include <sys/file.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <getopt.h>
 
 #include "xstrncpy.h"
 #include "nls.h"
@@ -121,6 +122,8 @@ struct options {
     char   *issue;			/* alternative issue file */
     int     numspeed;			/* number of baud rates to try */
     int     clocal;			/* CLOCAL_MODE_* */
+    char   *erasechars;			/* string with erase chars */
+    char   *killchars;			/* string with kill chars */
     int     speeds[MAX_SPEED];		/* baud rates to be tried */
     int     eightbits;			/* assume 8bit-clean tty */
 };
@@ -250,19 +253,19 @@ main(argc, argv)
     struct chardata chardata;		/* set by get_logname() */
     struct termios termios;		/* terminal mode bits */
     static struct options options = {
-	F_ISSUE,			/* show /etc/issue (SYSV_STYLE) */
-	0,				/* no timeout */
-	_PATH_LOGIN,			/* default login program */
-	"tty1",				/* default tty line */
-	"",				/* modem init string */
-	ISSUE,				/* default issue file */
-	0,				/* no baud rates known yet */
+	.flags      = F_ISSUE,		/* show /etc/issue (SYSV_STYLE) */
+	.login      = _PATH_LOGIN,	/* default login program */
+	.tty        = "tty1",		/* default tty line */
+	.initstring = "",		/* modem init string */
+	.issue      = ISSUE,		/* default issue file */
+	.erasechars = "#",
+	.killchars  = "@"
     };
 
        setlocale(LC_ALL, "");
        bindtextdomain(PACKAGE, LOCALEDIR);
        textdomain(PACKAGE);
-    
+
     /* The BSD-style init command passes us a useless process name. */
 
 #ifdef	SYSV_STYLE
@@ -389,7 +392,19 @@ parse_args(argc, argv, op)
     extern int optind;			/* getopt */
     int     c;
 
-    while (isascii(c = getopt(argc, argv, "8I:L::H:Ef:hil:mt:wUn"))) {
+    enum {
+	    ERASE_CHARS_OPTION = CHAR_MAX + 1,
+	    KILL_CHARS_OPTION,
+    };
+
+    const struct option longopts[] = {
+	{  "erase-chars",    required_argument,  0,  ERASE_CHARS_OPTION },
+	{  "kill-chars",     required_argument,  0,  KILL_CHARS_OPTION },
+	{ NULL, 0, 0, 0 }
+    };
+
+    while ((c = getopt_long(argc, argv,
+			"8I:L::H:Ef:hil:mt:wUn", longopts, NULL)) != -1) {
 	switch (c) {
 	case '8':
 	    op->eightbits = 1;
@@ -482,6 +497,12 @@ parse_args(argc, argv, op)
 	    break;
 	case 'U':
 	    op->flags |= F_LCUC;
+	    break;
+	case ERASE_CHARS_OPTION:
+	    op->erasechars = optarg;
+	    break;
+	case KILL_CHARS_OPTION:
+	    op->killchars = optarg;
 	    break;
 	default:
 	    usage();
@@ -1060,6 +1081,7 @@ char   *get_logname(op, cp, tp)
 	/* Read name, watch for break, parity, erase, kill, end-of-line. */
 
 	for (bp = logname, cp->eol = 0; cp->eol == 0; /* void */ ) {
+	    int key;
 
 	    /* Do not report trivial EINTR/EIO errors. */
 
@@ -1082,9 +1104,17 @@ char   *get_logname(op, cp, tp)
 			bits++;			/* count "1" bits */
 		cp->parity |= ((bits & 1) ? 1 : 2);
 	    }
+
+	    if (op->killchars && strchr(op->killchars, ascval))
+		key = CTL('U');
+	    else if (op->erasechars && strchr(op->erasechars, ascval))
+		key = DEL;
+	    else
+		key = ascval;
+
 	    /* Do erase, kill and end-of-line processing. */
 
-	    switch (ascval) {
+	    switch (key) {
 	    case CR:
 	    case NL:
 		*bp = 0;			/* terminate logname */
@@ -1092,7 +1122,6 @@ char   *get_logname(op, cp, tp)
 		break;
 	    case BS:
 	    case DEL:
-	    case '#':
 		cp->erase = ascval;		/* set erase character */
 		if (bp > logname) {
 		    (void) write(1, erase[cp->parity], 3);
@@ -1100,7 +1129,6 @@ char   *get_logname(op, cp, tp)
 		}
 		break;
 	    case CTL('U'):
-	    case '@':
 		cp->kill = ascval;		/* set kill character */
 		while (bp > logname) {
 		    (void) write(1, erase[cp->parity], 3);
