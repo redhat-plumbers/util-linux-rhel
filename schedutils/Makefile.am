@@ -8,6 +8,7 @@ dist_man_MANS = chrt.1
 if HAVE_IOPRIO_GET
 if HAVE_IOPRIO_SET
 usrbin_exec_PROGRAMS += ionice
+ionice_SOURCES = ionice.c $(top_srcdir)/lib/strutils.c
 dist_man_MANS += ionice.1
 endif
 endif

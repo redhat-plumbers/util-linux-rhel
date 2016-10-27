@@ -8,6 +8,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 #include <errno.h>
 #include <getopt.h>
 #include <unistd.h>
@@ -15,8 +16,11 @@
 #include <sys/syscall.h>
 #include <asm/unistd.h>
 #include <err.h>
+#include <ctype.h>
 
+#include "c.h"
 #include "nls.h"
+#include "strutils.h"
 
 static int tolerant;
 
@@ -65,6 +69,15 @@ static void ioprio_print(int pid)
 	}
 }
 
+static int parse_ioclass(const char *str)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(to_prio); i++)
+		if (!strcasecmp(str, to_prio[i]))
+			return i;
+	return -1;
+}
 
 static void ioprio_setpid(pid_t pid, int ioprio, int ioclass)
 {
@@ -129,7 +142,14 @@ int main(int argc, char *argv[])
 			set |= 1;
 			break;
 		case 'c':
-			ioclass = getnum(optarg);
+			if (isdigit(*optarg))
+				ioclass = strtol_or_err(optarg,
+					_("failed to parse class"));
+			else {
+				ioclass = parse_ioclass(optarg);
+				if (ioclass < 0)
+					errx(EXIT_FAILURE, _("unknown scheduling class: '%s'"), optarg);
+			}
 			set |= 2;
 			break;
 		case 'p':
