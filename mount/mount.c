@@ -1969,11 +1969,12 @@ do_mount_all (char *types, char *options, char *test_opts) {
 		/* if child, or not forked, do the mounting */
 		if (p == 0 || p == -1) {
 			for (mc = cp->mec; mc; mc = mc->nxt) {
-				status |= mount_one (mc->m.mnt_fsname,
+				int res = mount_one (mc->m.mnt_fsname,
 						     mc->m.mnt_dir,
 						     mc->m.mnt_type,
 						     mc->m.mnt_opts,
 						     options, 0, 0);
+				status |= res == 0 ? EX_SOMEOK : res;
 			}
 			if (mountcount)
 				status |= EX_SOMEOK;
