@@ -701,7 +701,10 @@ create_sgilabel(void)
 	res = blkdev_get_sectors(fd, &llsectors);
 
 #ifdef HDIO_GETGEO
-	if (!ioctl(fd, HDIO_GETGEO, &geometry)) {
+	if (ioctl(fd, HDIO_GETGEO, &geometry) == 0
+	    && geometry.heads
+	    && geometry.sectors) {
+
 		heads = geometry.heads;
 		sectors = geometry.sectors;
 		if (res == 0) {

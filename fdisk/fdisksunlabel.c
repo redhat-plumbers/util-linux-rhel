@@ -208,7 +208,10 @@ void create_sunlabel(void)
 	sec_fac = sector_size / 512;
 
 #ifdef HDIO_GETGEO
-	if (!ioctl(fd, HDIO_GETGEO, &geometry)) {
+	if (ioctl(fd, HDIO_GETGEO, &geometry) == 0
+	    && geometry.heads
+	    && geometry.sectors) {
+
 	        heads = geometry.heads;
 	        sectors = geometry.sectors;
 		if (res == 0) {
