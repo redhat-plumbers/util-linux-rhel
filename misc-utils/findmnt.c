@@ -586,7 +586,10 @@ int main(int argc, char *argv[])
 	    { "output",       1, 0, 'o' },
 	    { "raw",          0, 0, 'r' },
 	    { "types",        1, 0, 't' },
-	    { "fsroot",       0, 0, 'v' },
+
+	    { "nofsroot",     0, 0, 'v' },
+	    { "fsroot",       0, 0, 'v' },	/* RHEL6: typo, backward compatibility */
+
 	    { "submounts",    0, 0, 'R' },
 	    { "source",       1, 0, 'S' },
 	    { "target",       1, 0, 'T' },

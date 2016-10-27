@@ -125,7 +125,10 @@ int main(int argc, char **argv)
 	    { "keep-size", 0, 0, 'n' },
 	    { "punch-hole", 0, 0, 'p' },
 	    { "offset",    1, 0, 'o' },
-	    { "lenght",    1, 0, 'l' },
+
+	    { "length",    1, 0, 'l' },
+	    { "lenght",    1, 0, 'l' },		/* RHEL6: typo, backward compatibility */
+
 	    { NULL,        0, 0, 0 }
 	};
 
