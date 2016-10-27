@@ -185,6 +185,7 @@ gpt_probe_signature_fd(int fd)
 		if (gpt_check_signature(fd, lastlba))
 			res = 2;
 	}
+	lseek(fd, 0, SEEK_SET);
 	return res;
 }
 

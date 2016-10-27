@@ -201,7 +201,7 @@ char	*disk_device,			/* must be specified */
 	*line_ptr,			/* interactive input */
 	line_buffer[LINE_LENGTH];
 
-int	fd,				/* the disk */
+int	fd = -1,			/* the disk */
 	ext_index,			/* the prime extended partition */
 	listing = 0,			/* no aborts for fdisk -l */
 	nowarn = 0,			/* no warnings for fdisk -l/-s */
@@ -264,6 +264,7 @@ void fatal(enum failure why) {
 
 	if (listing) {
 		close(fd);
+		fd = -1;
 		longjmp(listingbuf, 1);
 	}
 
@@ -1223,7 +1224,7 @@ get_boot(enum action what) {
 	if (what == create_empty_dos)
 		goto got_dos_table;		/* skip reading disk */
 
-	if ((fd = open(disk_device, type_open)) < 0) {
+	if (fd < 0 && (fd = open(disk_device, type_open)) < 0) {
 	    if ((fd = open(disk_device, O_RDONLY)) < 0) {
 		if (what == try_only)
 		    return 1;
@@ -2642,7 +2643,6 @@ reread_partition_table(int leave) {
 			fprintf(stderr, _("\nError closing file\n"));
 			exit(1);
 		}
-
 		printf(_("Syncing disks.\n"));
 		sync();
 		exit(!!i);
@@ -2858,9 +2858,16 @@ is_ide_cdrom_or_tape(char *device) {
 }
 
 static void
-gpt_warning(char *dev)
+gpt_warning(char *dev, int xfd)
 {
-	if (dev && gpt_probe_signature_devname(dev))
+	int gpt;
+
+	if (!dev)
+		return;
+
+	gpt = xfd >= 0 ? gpt_probe_signature_fd(xfd) :
+			 gpt_probe_signature_devname(dev);
+	if (gpt)
 		fprintf(stderr, _("\nWARNING: GPT (GUID Partition Table) detected on '%s'! "
 			"The util fdisk doesn't support GPT. Use GNU Parted.\n\n"), dev);
 }
@@ -2875,8 +2882,8 @@ try(char *device, int user_specified) {
 	if (!user_specified)
 		if (is_ide_cdrom_or_tape(device))
 			return;
-	gpt_warning(device);
 	if ((fd = open(disk_device, type_open)) >= 0) {
+		gpt_warning(device, fd);
 		gb = get_boot(try_only);
 		if (gb > 0) { /* I/O error */
 		} else if (gb < 0) { /* no DOS signature */
@@ -2887,6 +2894,7 @@ try(char *device, int user_specified) {
 			list_table(0);
 		}
 		close(fd);
+		fd = -1;
 	} else {
 		/* Ignore other errors, since we try IDE
 		   and SCSI hard disks which may not be
@@ -3048,6 +3056,7 @@ main(int argc, char **argv) {
 			if (blkdev_get_sectors(fd, &size) == -1)
 				fatal(ioctl_error);
 			close(fd);
+			fd = -1;
 			if (opts == 1)
 				printf("%llu\n", size/2);
 			else
@@ -3061,7 +3070,7 @@ main(int argc, char **argv) {
 	else
 		fatal(usage);
 
-	gpt_warning(disk_device);
+	gpt_warning(disk_device, -1);
 	get_boot(fdisk);
 
 	if (osf_label) {
@@ -3149,6 +3158,7 @@ main(int argc, char **argv) {
 			break;
 		case 'q':
 			close(fd);
+			fd = -1;
 			printf("\n");
 			exit(0);
 		case 's':
