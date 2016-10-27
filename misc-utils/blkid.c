@@ -578,7 +578,7 @@ static int list_to_usage(const char *list, int *flag)
 int main(int argc, char **argv)
 {
 	blkid_cache cache = NULL;
-	char *devices[128] = { NULL, };
+	char **devices = NULL;
 	char *show[128] = { NULL, };
 	char *search_type = NULL, *search_value = NULL;
 	char *read = NULL;
@@ -692,6 +692,16 @@ int main(int argc, char **argv)
 		default:
 			usage(err);
 		}
+
+
+	/* The rest of the args are device names */
+	if (optind < argc) {
+		devices = calloc(argc - optind, sizeof(char *));
+		if (!devices) {
+			fprintf(stderr, "Failed to allocate device name array\n");
+			goto exit;
+		}
+	}
 
 	while (optind < argc)
 		devices[numdev++] = argv[optind++];
@@ -828,5 +838,6 @@ exit:
 	free(search_value);
 	if (!lowprobe && !eval)
 		blkid_put_cache(cache);
+	free(devices);
 	return err;
 }
