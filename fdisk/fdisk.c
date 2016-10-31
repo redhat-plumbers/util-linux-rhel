@@ -21,6 +21,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <limits.h>
+#include <err.h>
 
 #include "nls.h"
 #include "blkdev.h"
@@ -288,36 +289,36 @@ void fatal(enum failure why) {
 "\n");
 			break;
 		case unable_to_open:
+			/* let's use message already translated by po/ stuff */
 			snprintf(error, sizeof(error),
-				 _("Unable to open %s\n"), disk_device);
+				 _("cannot open %s"), disk_device);
 			break;
 		case unable_to_read:
 			snprintf(error, sizeof(error),
-				 _("Unable to read %s\n"), disk_device);
+				 _("Unable to read %s"), disk_device);
 			break;
 		case unable_to_seek:
 			snprintf(error, sizeof(error),
-				_("Unable to seek on %s\n"),disk_device);
+				_("Unable to seek on %s"),disk_device);
 			break;
 		case unable_to_write:
 			snprintf(error, sizeof(error),
-				_("Unable to write %s\n"), disk_device);
+				_("Unable to write %s"), disk_device);
 			break;
 		case ioctl_error:
 			snprintf(error, sizeof(error),
-				 _("BLKGETSIZE ioctl failed on %s\n"),
+				 _("BLKGETSIZE ioctl failed on %s"),
 				disk_device);
 			break;
 		case out_of_memory:
-			message = _("Unable to allocate any more memory\n");
+			message = _("Unable to allocate any more memory");
 			break;
 		default:
-			message = _("Fatal error\n");
+			message = _("Fatal error");
 	}
 
 	fputc('\n', stderr);
-	fputs(message, stderr);
-	exit(rc);
+	err(rc, message);
 }
 
 static void
