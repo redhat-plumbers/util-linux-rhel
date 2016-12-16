@@ -104,6 +104,15 @@ static int fstype_cmp(const void *v1, const void *v2)
 	return strcmp(s1, s2);
 }
 
+int mnt_stat_mountpoint(const char *target, struct stat *st)
+{
+#ifdef AT_NO_AUTOMOUNT
+	return fstatat(-1, target, st, AT_NO_AUTOMOUNT);
+#else
+	return stat(target, st);
+#endif
+}
+
 /* returns basename and keeps dirname in the @path, if @path is "/" (root)
  * then returns empty string */
 char *stripoff_last_component(char *path)

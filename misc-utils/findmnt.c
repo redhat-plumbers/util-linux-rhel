@@ -239,16 +239,15 @@ static void set_source_match(const char *data)
 /* @tb has to be from kernel (so no fstab or so)! */
 static void enable_extra_target_match(struct libmnt_table *tb)
 {
-	char *cn = NULL;
-	const char *tgt = NULL, *mnt = NULL;
+	const char *tgt, *mnt = NULL;
 	struct libmnt_fs *fs;
 
 	/*
 	 * Check if match pattern is mountpoint, if not use the
 	 * real mountpoint.
 	 */
-	cn = mnt_resolve_path(get_match(COL_TARGET), cache);
-	if (!cn)
+	tgt = mnt_resolve_path(get_match(COL_TARGET), cache);
+	if (!tgt)
 		return;
 
 	fs = mnt_table_find_mountpoint(tb, tgt, MNT_ITER_BACKWARD);
@@ -256,9 +255,6 @@ static void enable_extra_target_match(struct libmnt_table *tb)
 		mnt = mnt_fs_get_target(fs);
 	if (mnt && strcmp(mnt, tgt) != 0)
 		set_match(COL_TARGET, xstrdup(mnt));	/* replace the current setting */
-
-	/* replace the current setting with the real mountpoint */
-	set_match(COL_TARGET, mnt);
 }
 
 

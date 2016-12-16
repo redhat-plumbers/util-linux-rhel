@@ -528,6 +528,7 @@ struct libmnt_fs *mnt_table_find_mountpoint(struct libmnt_table *tb,
 					    int direction)
 {
 	char *mnt;
+	struct stat st;
 
 	if (!tb || !path || !*path)
 		return NULL;
@@ -535,6 +536,9 @@ struct libmnt_fs *mnt_table_find_mountpoint(struct libmnt_table *tb,
 		return NULL;
 
 	DBG(TAB, mnt_debug_h(tb, "lookup MOUNTPOINT: '%s'", path));
+
+	if (mnt_stat_mountpoint(path, &st))
+		return NULL;
 
 	mnt = strdup(path);
 	if (!mnt)
