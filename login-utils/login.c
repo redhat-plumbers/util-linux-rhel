@@ -115,6 +115,7 @@
 #include "login.h"
 #include "xstrncpy.h"
 #include "nls.h"
+#include "linux_version.h"
 
 
 #ifdef HAVE_SECURITY_PAM_MISC_H
@@ -553,6 +554,7 @@ main(int argc, char **argv)
 
     {
 	struct termios tt, ttt;
+	int kver = get_linux_version();
 
 	tcgetattr(0, &tt);
 	ttt = tt;
@@ -563,15 +565,26 @@ main(int argc, char **argv)
 	fchmod(0, TTY_MODE);
 
 	/* Kill processes left on this tty */
-	tcsetattr(0, TCSANOW, &ttt);
 
-       /*
-	* Let's close file decriptors before vhangup
-	* https://lkml.org/lkml/2012/6/5/145
-	*/
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
+	/*
+	 * RHEL6 backport:
+	 * The close-before-vhangup semantic is supported since rhel
+	 * kernel-2.6.32-642.
+	 */
+	if (kver > KERNEL_VERSION(2, 6, 32)
+	    || (kver == KERNEL_VERSION(2, 6, 32) && get_linux_release() >= 642))
+	{
+		tcsetattr(0, TCSANOW, &ttt);
+
+	       /*
+		* Let's close file decriptors before vhangup
+		* https://lkml.org/lkml/2012/6/5/145
+		*/
+		close(STDIN_FILENO);
+		close(STDOUT_FILENO);
+		close(STDERR_FILENO);
+	} else
+		tcsetattr(0,TCSAFLUSH,&ttt);
 
 	signal(SIGHUP, SIG_IGN); /* so vhangup() wont kill us */
 	vhangup();
