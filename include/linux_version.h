@@ -10,5 +10,6 @@
 #endif
 
 int get_linux_version(void);
+int get_linux_release(void);
 
 #endif /* LINUX_VERSION_H */

@@ -23,3 +23,19 @@ get_linux_version (void)
 
 	return kver;
 }
+
+int
+get_linux_release(void)
+{
+	static int krel = -1;
+	struct utsname uts;
+
+	if (krel != -1)
+		return krel;
+	if (uname (&uts))
+		krel = 0;
+	else if (sscanf (uts.release, "%*d.%*d.%*d-%d", &krel) != 1)
+		krel = 0;
+
+	return krel;
+}
