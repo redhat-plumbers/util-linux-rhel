@@ -75,6 +75,9 @@ static int probe_minix(blkid_probe pr, const struct blkid_idmag *mag)
 	unsigned char *ext;
 	const unsigned char *data;
 	int version = 0, swabme = 0;
+	unsigned long zones, ninodes, imaps, zmaps;
+	off_t firstz;
+	size_t zone_size;
 
 	data = blkid_probe_get_buffer(pr, 1024,
 			max(sizeof(struct minix_super_block),
@@ -85,14 +88,9 @@ static int probe_minix(blkid_probe pr, const struct blkid_idmag *mag)
 	if (version < 1)
 		return 1;
 
+
 	if (version <= 2) {
 		struct minix_super_block *sb = (struct minix_super_block *) data;
-		unsigned long zones, ninodes, imaps, zmaps;
-		off_t firstz;
-
-		if (sb->s_imap_blocks == 0 || sb->s_zmap_blocks == 0)
-			return 1;
-
 		uint16_t state = minix_swab16(swabme, sb->s_state);
 		if ((state & (MINIX_VALID_FS | MINIX_ERROR_FS)) != state)
 			return 1;
@@ -103,19 +101,29 @@ static int probe_minix(blkid_probe pr, const struct blkid_idmag *mag)
 		imaps   = minix_swab16(swabme, sb->s_imap_blocks);
 		zmaps   = minix_swab16(swabme, sb->s_zmap_blocks);
 		firstz  = minix_swab16(swabme, sb->s_firstdatazone);
-
-		/* sanity checks to be sure that the FS is really minix */
-		if (imaps * MINIX_BLOCK_SIZE * 8 < ninodes + 1)
-			return 1;
-		if (zmaps * MINIX_BLOCK_SIZE * 8 < zones - firstz + 1)
-			return 1;
-
+		zone_size = sb->s_log_zone_size;
 	} else if (version == 3) {
 		struct minix3_super_block *sb = (struct minix3_super_block *) data;
 
-		if (sb->s_imap_blocks == 0 || sb->s_zmap_blocks == 0)
-			return 1;
+		zones = minix_swab32(swabme, sb->s_zones);
+		ninodes = minix_swab32(swabme, sb->s_ninodes);
+		imaps   = minix_swab16(swabme, sb->s_imap_blocks);
+		zmaps   = minix_swab16(swabme, sb->s_zmap_blocks);
+		firstz  = minix_swab16(swabme, sb->s_firstdatazone);
+		zone_size = sb->s_log_zone_size;
 	}
+
+	/* sanity checks to be sure that the FS is really minix.
+	 * see disk-utils/fsck.minix.c read_superblock
+	 */
+	if (zone_size != 0 || ninodes == 0 || ninodes == UINT32_MAX)
+		return 1;
+	if (imaps * MINIX_BLOCK_SIZE * 8 < ninodes + 1)
+		return 1;
+	if (firstz > (off_t) zones)
+		return 1;
+	if (zmaps * MINIX_BLOCK_SIZE * 8 < zones - firstz + 1)
+		return 1;
 
 	/* unfortunately, some parts of ext3 is sometimes possible to
 	 * interpreted as minix superblock. So check for extN magic
