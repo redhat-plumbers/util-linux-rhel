@@ -87,7 +87,8 @@ static int probe_minix(blkid_probe pr, const struct blkid_idmag *mag)
 
 	if (version <= 2) {
 		struct minix_super_block *sb = (struct minix_super_block *) data;
-		int zones, ninodes, imaps, zmaps, firstz;
+		unsigned long zones, ninodes, imaps, zmaps;
+		off_t firstz;
 
 		if (sb->s_imap_blocks == 0 || sb->s_zmap_blocks == 0)
 			return 1;
