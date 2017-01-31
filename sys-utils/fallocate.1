@@ -11,6 +11,13 @@ fallocate \- preallocate space to a file
 .B \-l
 .IR length
 .I filename
+.PP
+.B fallocate \-x
+.RB [ \-o
+.IR offset ]
+.RB \-l
+.IR length
+.I filename
 .SH DESCRIPTION
 .B fallocate
 is used to preallocate blocks to a file.  For filesystems which support the
@@ -39,6 +46,9 @@ Punch holes in the file, the range should not exceed the length of the file.
 Specifies the beginning offset of the allocation, in bytes.
 .IP "\fB\-l, \-\-length\fP \fIlength\fP
 Specifies the length of the allocation, in bytes.
+.IP "\fB\-x , \-\-posix\fP
+Enable POSIX operation mode. In that mode allocation operation always completes,
+but it may take longer time when fast allocation is not supported by the underlying filesystem.
 .IP "\fB\-h, \-\-help\fP"
 Print help and exit.
 .IP "\fB-V, \-\-version"

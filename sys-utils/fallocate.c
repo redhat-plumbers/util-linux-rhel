@@ -52,6 +52,7 @@
 #include "strutils.h"
 #include "c.h"
 #include "closestream.h"
+#include "optutils.h"
 
 static void __attribute__((__noreturn__)) usage(FILE *out)
 {
@@ -63,6 +64,9 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 		" -p, --punch-hole    punch holes in the file\n"
 		" -o, --offset <num>  offset of the allocation, in bytes\n"
 		" -l, --length <num>  length of the allocation, in bytes\n"), out);
+#ifdef HAVE_POSIX_FALLOCATE
+	fputs(_(" -x, --posix         use posix_fallocate(3) instead of fallocate(2)\n"), out);
+#endif
 	fputs(USAGE_SEPARATOR, out);
 	fputs(USAGE_HELP, out);
 	fputs(USAGE_VERSION, out);
@@ -70,6 +74,18 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
+
+
+#ifdef HAVE_POSIX_FALLOCATE
+static void xposix_fallocate(int fd, off_t offset, off_t length)
+{
+	int error = posix_fallocate(fd, offset, length);
+	if (error < 0) {
+		err(EXIT_FAILURE, _("fallocate failed"));
+	}
+}
+#endif
+
 
 static loff_t cvtnum(char *s)
 {
@@ -85,9 +101,10 @@ int main(int argc, char **argv)
 {
 	char	*fname;
 	int	c;
-	int	error;
+	int	error = 0;
 	int	fd;
 	int	mode = 0;
+	int	posix = 0;
 	loff_t	length = -2LL;
 	loff_t	offset = 0;
 
@@ -98,15 +115,25 @@ int main(int argc, char **argv)
 	    { "punch-hole", 0, 0, 'p' },
 	    { "offset",    1, 0, 'o' },
 	    { "length",    1, 0, 'l' },
+	    { "posix",     0, 0, 'x' },
 	    { NULL,        0, 0, 0 }
 	};
+
+	static const ul_excl_t excl[] = {       /* rows and cols in ASCII order */
+		{ 'x', 'n', 'p' },
+		{ 0 }
+	};
+	int excl_st[ARRAY_SIZE(excl)] = UL_EXCL_STATUS_INIT;
 
 	setlocale(LC_ALL, "");
 	bindtextdomain(PACKAGE, LOCALEDIR);
 	textdomain(PACKAGE);
 	atexit(close_stdout);
 
-	while ((c = getopt_long(argc, argv, "hVnpl:o:", longopts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "hVnpl:o:x", longopts, NULL)) != -1) {
+
+		err_exclusive_options(c, longopts, excl, excl_st);
+
 		switch(c) {
 		case 'h':
 			usage(stdout);
@@ -126,6 +153,13 @@ int main(int argc, char **argv)
 		case 'o':
 			offset = cvtnum(optarg);
 			break;
+		case 'x':
+#ifdef HAVE_POSIX_FALLOCATE
+			posix = 1;
+			break;
+#else
+			errx(EXIT_FAILURE, _("posix_fallocate support is not compiled"))
+#endif
 		default:
 			usage(stderr);
 			break;
@@ -151,6 +185,12 @@ int main(int argc, char **argv)
 	fd = open(fname, O_WRONLY|O_CREAT, 0644);
 	if (fd < 0)
 		err(EXIT_FAILURE, _("cannot open %s"), fname);
+
+#ifdef HAVE_POSIX_FALLOCATE
+	if (posix)
+		xposix_fallocate(fd, offset, length);
+	else
+#endif
 
 #ifdef HAVE_FALLOCATE
 	error = fallocate(fd, mode, offset, length);
