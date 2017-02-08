@@ -357,21 +357,26 @@ create_watching_parent (void)
 	    break;
 	}
       if (pid != (pid_t)-1)
-	if (WIFSIGNALED (status))
-	  {
-            fprintf (stderr, "%s%s\n", strsignal (WTERMSIG (status)),
-                     WCOREDUMP (status) ? _(" (core dumped)") : "");
-            status = WTERMSIG (status) + 128;
-	  }
-	else
-	  status = WEXITSTATUS (status);
+	{
+	  if (WIFSIGNALED (status))
+	    {
+	      fprintf (stderr, "%s%s\n", strsignal (WTERMSIG (status)),
+                       WCOREDUMP (status) ? _(" (core dumped)") : "");
+	      status = WTERMSIG (status) + 128;
+	    }
+	  else
+	    status = WEXITSTATUS (status);
+
+          /* child is gone, don't use the PID anymore */
+          child = (pid_t) -1;
+	}
       else
 	status = 1;
     }
   else
     status = 1;
 
-  if (caught_signal)
+  if (caught_signal && child != (pid_t)-1)
     {
       fprintf (stderr, _("\nSession terminated, killing shell..."));
       kill (child, SIGTERM);
@@ -379,7 +384,7 @@ create_watching_parent (void)
 
   cleanup_pam (PAM_SUCCESS);
 
-  if (caught_signal)
+  if (caught_signal && (child != (pid_t)-1))
     {
       sleep (2);
       kill (child, SIGKILL);
