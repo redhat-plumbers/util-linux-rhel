@@ -1202,7 +1202,7 @@ int dos_list_table(struct fdisk_context *cxt,
 		p = pe->part_table;
 		if (p && !is_cleared_partition(p)) {
 			unsigned int psects = get_nr_sects(p);
-			unsigned int pblocks = psects;
+			unsigned long pblocks = psects;
 			unsigned int podd = 0;
 			struct fdisk_parttype *type =
 					fdisk_get_parttype_from_code(cxt, p->sys_ind);
