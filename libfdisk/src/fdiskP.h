@@ -315,6 +315,7 @@ extern void fdisk_deinit_label(struct fdisk_label *lb);
 
 /* gpt.c -- temporary bypass library API... */
 extern void gpt_list_table(struct fdisk_context *cxt, int xtra);
+extern void gpt_print_header_id(struct fdisk_context *cxt);
 
 /* ask.c */
 extern int fdisk_ask_partnum(struct fdisk_context *cxt, size_t *partnum, int wantnew);

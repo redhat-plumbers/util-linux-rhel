@@ -657,6 +657,8 @@ list_disk_geometry(struct fdisk_context *cxt) {
 		printf(_("Disk label type: %s\n"), cxt->label->name);
 	if (fdisk_is_disklabel(cxt, DOS))
 		dos_print_mbr_id(cxt);
+	if (fdisk_is_disklabel(cxt, GPT))
+		gpt_print_header_id(cxt);
 	printf("\n");
 }
 

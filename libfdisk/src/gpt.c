@@ -341,6 +341,24 @@ static inline int partition_unused(const struct gpt_entry *e)
 			sizeof(struct gpt_guid));
 }
 
+void gpt_print_header_id(struct fdisk_context *cxt)
+{
+	char str[37];
+	struct gpt_header *header;
+	struct fdisk_gpt_label *gpt;
+
+	assert(cxt);
+	assert(cxt->label);
+	assert(fdisk_is_disklabel(cxt, GPT));
+
+	gpt = self_label(cxt);
+	header = gpt->pheader ? gpt->pheader : gpt->bheader;
+
+	guid_to_string(&header->disk_guid, str);
+
+	printf("Disk identifier: %s\n", str);
+}
+
 /*
  * Builds a clean new valid protective MBR - will wipe out any existing data.
  * Returns 0 on success, otherwise < 0 on error.
