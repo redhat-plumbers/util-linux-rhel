@@ -54,6 +54,8 @@
 #include "closestream.h"
 #include "nls.h"
 #include "strutils.h"
+#include "xalloc.h"
+#include "all-io.h"
 
 #define	SYSLOG_NAMES
 #include <syslog.h>
@@ -183,7 +185,7 @@ inet_socket(const char *servername, const char *port, const int socket_type)
 
 static void
 mysyslog(int fd, int logflags, int pri, char *tag, char *msg) {
-       char buf[1000], pid[30], *cp, *tp;
+       char *buf, pid[30], *cp, *tp;
        time_t now;
 
        if (fd > -1) {
@@ -201,11 +203,11 @@ mysyslog(int fd, int logflags, int pri, char *tag, char *msg) {
                (void)time(&now);
 	       tp = ctime(&now)+4;
 
-               snprintf(buf, sizeof(buf), "<%d>%.15s %.200s%s: %.400s",
+               xasprintf(&buf, "<%d>%.15s %.200s%s: %s",
 			pri, tp, cp, pid, msg);
 
-               if (write(fd, buf, strlen(buf)+1) < 0)
-                       return; /* error */
+	       write_all(fd, buf, strlen(buf)+1);
+	       free(buf);
        }
 }
 
@@ -221,6 +223,7 @@ static void __attribute__ ((__noreturn__)) usage(FILE *out)
 		" -i, --id              log the process ID too\n"
 		" -f, --file <file>     log the contents of this file\n"
 		" -h, --help            display this help text and exit\n"), out);
+	fputs(_(" -S, --size <num>      maximum size for a single message (default 1024)\n"), out);
 	fputs(_(" -n, --server <name>   write to this remote syslog server\n"
 		" -P, --port <port>     use this port for UDP or TCP connection\n"
 		" -p, --priority <prio> mark given message with this priority\n"
@@ -241,11 +244,12 @@ static void __attribute__ ((__noreturn__)) usage(FILE *out)
 int
 main(int argc, char **argv) {
 	int ch, logflags, pri;
-	char *tag, buf[1024];
+	char *tag, *buf;
 	char *usock = NULL;
 	char *server = NULL;
 	char *port = NULL;
 	int LogSock = -1, socket_type = ALL_TYPES;
+	size_t max_message_size = 1024;
 
 	static const struct option longopts[] = {
 		{ "id",		no_argument,	    0, 'i' },
@@ -253,6 +257,7 @@ main(int argc, char **argv) {
 		{ "file",	required_argument,  0, 'f' },
 		{ "priority",	required_argument,  0, 'p' },
 		{ "tag",	required_argument,  0, 't' },
+		{ "size",       required_argument,  0, 'S' },
 		{ "socket",	required_argument,  0, 'u' },
 		{ "udp",	no_argument,	    0, 'd' },
 		{ "tcp",	no_argument,	    0, 'T' },
@@ -271,7 +276,7 @@ main(int argc, char **argv) {
 	tag = NULL;
 	pri = LOG_NOTICE;
 	logflags = 0;
-	while ((ch = getopt_long(argc, argv, "f:ip:st:u:dTn:P:Vh",
+	while ((ch = getopt_long(argc, argv, "f:ip:st:u:dTn:P:S:Vh",
 					    longopts, NULL)) != -1) {
 		switch((char)ch) {
 		case 'f':		/* file to log */
@@ -296,6 +301,10 @@ main(int argc, char **argv) {
 			break;
 		case 'd':
 			socket_type = TYPE_UDP;
+			break;
+		case 'S':
+			max_message_size = strtosize_or_err(optarg,
+                                _("failed to parse message size"));
 			break;
 		case 'T':
 			socket_type = TYPE_TCP;
@@ -327,21 +336,23 @@ main(int argc, char **argv) {
 	else
 		openlog(tag ? tag : getlogin(), logflags, 0);
 
+	buf = xcalloc(1, max_message_size);
+
 	/* log input line if appropriate */
 	if (argc > 0) {
 		register char *p, *endp;
 		size_t len;
 
-		for (p = buf, endp = buf + sizeof(buf) - 2; *argv;) {
+		for (p = buf, endp = buf + max_message_size - 2; *argv;) {
 			len = strlen(*argv);
 			if (p + len > endp && p > buf) {
 			    if (!usock && !server)
 				syslog(pri, "%s", buf);
 			    else
 				mysyslog(LogSock, logflags, pri, tag, buf);
-				p = buf;
+			    p = buf;
 			}
-			if (len > sizeof(buf) - 1) {
+			if (len > max_message_size - 1) {
 			    if (!usock && !server)
 				syslog(pri, "%s", *argv++);
 			    else
@@ -360,7 +371,7 @@ main(int argc, char **argv) {
 			mysyslog(LogSock, logflags, pri, tag, buf);
 		}
 	} else {
-		while (fgets(buf, sizeof(buf), stdin) != NULL) {
+		while (fgets(buf, max_message_size, stdin) != NULL) {
 		    /* glibc is buggy and adds an additional newline,
 		       so we have to remove it here until glibc is fixed */
 		    int len = strlen(buf);
@@ -374,6 +385,9 @@ main(int argc, char **argv) {
 			mysyslog(LogSock, logflags, pri, tag, buf);
 		}
 	}
+
+	free(buf);
+
 	if (!usock && !server)
 		closelog();
 	else

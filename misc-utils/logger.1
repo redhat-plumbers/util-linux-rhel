@@ -98,6 +98,12 @@ logs the message as informational in the local3 facility.
 The default is
 .IR user.notice .
 .TP
+\fB\-S\fR, \fB\-\-size\fR \fIsize\fR
+Sets the maximum permitted message size. The default is 1KiB, which is
+the limit traditionally used and specified in RFC 3164. When selecting a
+maximum message size, it is important to ensure that the receiver supports
+the max size as well, otherwise messages may become truncated.
+.TP
 \fB\-s\fR, \fB\-\-stderr\fR
 Output the message to standard error as well as to the system log.
 .TP
