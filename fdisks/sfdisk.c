@@ -2905,26 +2905,25 @@ do_pt_geom(char *dev, int silent) {
 /* for compatibility with earlier fdisk: provide option -s */
 static void
 do_size(char *dev, int silent) {
-    int fd;
+    int fd, rc;
     unsigned long long size;
 
     fd = my_open(dev, 0, silent);
     if (fd < 0)
 	return;
 
-    if (blkdev_get_sectors(fd, &size) == -1) {
+    rc = blkdev_get_sectors(fd, &size);
+    close(fd);
+
+    if (rc == -1) {
 	if (!silent) {
 	    perror(dev);
 	    errx(EXIT_FAILURE, _("Cannot get size of %s"), dev);
 	}
-	goto done;
+	return;
     }
 
     size /= 2;			/* convert sectors to blocks */
-
-    /* a CDROM drive without mounted CD yields MAXINT */
-    if (silent && size == ((1 << 30) - 1))
-	goto done;
 
     if (silent)
 	printf("%s: %9llu\n", dev, size);
@@ -2932,9 +2931,6 @@ do_size(char *dev, int silent) {
 	printf("%llu\n", size);
 
     total_size += size;
-
-done:
-    close(fd);
 }
 
 /*
