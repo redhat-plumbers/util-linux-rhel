@@ -924,11 +924,15 @@ static int is_ide_cdrom_or_tape(char *device)
 }
 
 /* Print disk geometry and partition table of a specified device (-l option) */
-static void print_partition_table_from_option(struct fdisk_context *cxt,
-				char *device, unsigned long sector_size)
+static int print_partition_table_from_option(struct fdisk_context *cxt,
+				char *device, unsigned long sector_size,
+				int warnme)
 {
-	if (fdisk_context_assign_device(cxt, device, 1) != 0)	/* read-only */
-		err(EXIT_FAILURE, _("cannot open %s"), device);
+	if (fdisk_context_assign_device(cxt, device, 1) != 0) {	/* read-only */
+		if (warnme || errno == EACCES)
+			warn(_("cannot open %s"), device);
+		return -1;
+	}
 
 	if (sector_size) /* passed -b option, override autodiscovery */
 		fdisk_override_sector_size(cxt, sector_size);
@@ -941,6 +945,8 @@ static void print_partition_table_from_option(struct fdisk_context *cxt,
 		list_table(cxt, 0);
 	else
 		list_disk_geometry(cxt);
+
+	return 0;
 }
 
 /*
@@ -971,7 +977,7 @@ print_all_partition_table_from_option(struct fdisk_context *cxt,
 			char *cn = canonicalize_path(devname);
 			if (cn) {
 				if (!is_ide_cdrom_or_tape(cn))
-					print_partition_table_from_option(cxt, cn, sector_size);
+					print_partition_table_from_option(cxt, cn, sector_size, 0);
 				free(cn);
 			}
 		}
@@ -1223,14 +1229,17 @@ int main(int argc, char **argv)
 			 " be used with one specified device\n"));
 
 	if (optl) {
+		int rc = 0;
+
 		nowarn = 1;
 		if (argc > optind) {
 			int k;
 			for (k = optind; k < argc; k++)
-				print_partition_table_from_option(cxt, argv[k], sector_size);
+				rc += print_partition_table_from_option(cxt, argv[k], sector_size, 1);
 		} else
 			print_all_partition_table_from_option(cxt, sector_size);
-		exit(EXIT_SUCCESS);
+
+		exit(rc ? EXIT_FAILURE : EXIT_SUCCESS);
 	}
 
 	if (opts) {
