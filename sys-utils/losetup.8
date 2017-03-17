@@ -37,7 +37,7 @@ Print name of first unused loop device:
 .B "losetup \-f"
 .sp
 .in -5
-Setup loop device:
+Set up a loop device:
 .sp
 .in +5
 .B losetup
@@ -46,10 +46,8 @@ Setup loop device:
 .RB [ \-\-sizelimit
 .IR size ]
 .in +8
-.RB [ \-p
-.IR pfd ]
-.RB [ \-rP ]
-.RB { \-f [ \-\-show ]| \fIloopdev\fP }
+.RB [ \-Pr ]
+.RB [ \-\-show ]  " \-f" | \fIloopdev\fP
 .I file
 .sp
 .in -13
