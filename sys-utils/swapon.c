@@ -632,20 +632,21 @@ static int swapon_all(void)
 
 	while (mnt_table_find_next_fs(tb, itr, match_swap, NULL, &fs) == 0) {
 		/* defaults */
+		size_t argsz = 0;
 		int pri = priority, dsc = discard, nofail = ifexists;
 		char *p, *src, *dscarg;
 
 		if (mnt_fs_get_option(fs, "noauto", NULL, NULL) == 0)
 			continue;
-		if (mnt_fs_get_option(fs, "discard", &dscarg, NULL) == 0) {
+		if (mnt_fs_get_option(fs, "discard", &dscarg, &argsz) == 0) {
 			dsc |= SWAP_FLAG_DISCARD;
 			if (dscarg) {
 				/* only single-time discards are wanted */
-				if (strcmp(dscarg, "once") == 0)
+				if (strncmp(dscarg, "once", argsz) == 0)
 					dsc |= SWAP_FLAG_DISCARD_ONCE;
 
 				/* do discard for every released swap page */
-				if (strcmp(dscarg, "pages") == 0)
+				if (strncmp(dscarg, "pages", argsz) == 0)
 					dsc |= SWAP_FLAG_DISCARD_PAGES;
 			}
 		}
