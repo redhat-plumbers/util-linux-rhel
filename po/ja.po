@@ -13013,7 +13013,7 @@ msgstr "セットされていません"
 
 #: sys-utils/ipcs.c:327
 msgid "dest"
-msgstr "対象"
+msgstr "削除"
 
 #: sys-utils/ipcs.c:328
 msgid "locked"
