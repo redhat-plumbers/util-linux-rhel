@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <assert.h>
 
 #include "c.h"
 #include "nls.h"
@@ -687,6 +688,134 @@ int streq_except_trailing_slash(const char *s1, const char *s2)
 	return equal;
 }
 
+char *strnappend(const char *s, const char *suffix, size_t b)
+{
+        size_t a;
+        char *r;
+
+        if (!s && !suffix)
+                return strdup("");
+        if (!s)
+                return strndup(suffix, b);
+        if (!suffix)
+                return strdup(s);
+
+        assert(s);
+        assert(suffix);
+
+        a = strlen(s);
+        if (b > ((size_t) -1) - a)
+                return NULL;
+
+        r = malloc(a + b + 1);
+        if (!r)
+                return NULL;
+
+        memcpy(r, s, a);
+        memcpy(r + a, suffix, b);
+        r[a+b] = 0;
+
+        return r;
+}
+
+char *strappend(const char *s, const char *suffix)
+{
+        return strnappend(s, suffix, suffix ? strlen(suffix) : 0);
+}
+
+char *strfappend(const char *s, const char *format, ...)
+{
+	va_list ap;
+	char *val, *res;
+	int sz;
+
+	va_start(ap, format);
+	sz = vasprintf(&val, format, ap);
+	va_end(ap);
+
+	if (sz < 0)
+		return NULL;
+
+	res = strnappend(s, val, sz);
+	free(val);
+	return res;
+}
+
+static size_t strcspn_escaped(const char *s, const char *reject)
+{
+        int escaped = 0;
+        int n;
+
+        for (n=0; s[n]; n++) {
+                if (escaped)
+                        escaped = 0;
+                else if (s[n] == '\\')
+                        escaped = 1;
+                else if (strchr(reject, s[n]))
+                        break;
+        }
+
+        /* if s ends in \, return index of previous char */
+        return n - escaped;
+}
+
+/* Split a string into words. */
+const char *split(const char **state, size_t *l, const char *separator, int quoted)
+{
+        const char *current;
+
+        current = *state;
+
+        if (!*current) {
+                assert(**state == '\0');
+                return NULL;
+        }
+
+        current += strspn(current, separator);
+        if (!*current) {
+                *state = current;
+                return NULL;
+        }
+
+        if (quoted && strchr("\'\"", *current)) {
+                char quotechars[2] = {*current, '\0'};
+
+                *l = strcspn_escaped(current + 1, quotechars);
+                if (current[*l + 1] == '\0' || current[*l + 1] != quotechars[0] ||
+                    (current[*l + 2] && !strchr(separator, current[*l + 2]))) {
+                        /* right quote missing or garbage at the end */
+                        *state = current;
+                        return NULL;
+                }
+                *state = current++ + *l + 2;
+        } else if (quoted) {
+                *l = strcspn_escaped(current, separator);
+                if (current[*l] && !strchr(separator, current[*l])) {
+                        /* unfinished escape */
+                        *state = current;
+                        return NULL;
+                }
+                *state = current + *l;
+        } else {
+                *l = strcspn(current, separator);
+                *state = current + *l;
+        }
+
+        return current;
+}
+
+/* Rewind file pointer forward to new line.  */
+int skip_fline(FILE *fp)
+{
+	int ch;
+
+	do {
+		if ((ch = fgetc(fp)) == EOF)
+			return 1;
+		if (ch == '\n')
+			return 0;
+	} while (1);
+}
 
 #ifdef TEST_PROGRAM
 

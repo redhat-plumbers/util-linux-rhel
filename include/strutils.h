@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <sys/types.h>
+#include <stdio.h>
 
 /* default strtoxx_or_err() exit code */
 #ifndef STRTOXX_EXIT_CODE
@@ -101,5 +102,13 @@ extern int string_to_bitmask(const char *list,
 extern int parse_range(const char *str, int *lower, int *upper, int def);
 
 extern int streq_except_trailing_slash(const char *s1, const char *s2);
+
+extern char *strnappend(const char *s, const char *suffix, size_t b);
+extern char *strappend(const char *s, const char *suffix);
+extern char *strfappend(const char *s, const char *format, ...)
+		 __attribute__ ((__format__ (__printf__, 2, 0)));
+extern const char *split(const char **state, size_t *l, const char *separator, int quoted);
+
+extern int skip_fline(FILE *fp);
 
 #endif

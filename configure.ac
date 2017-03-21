@@ -826,6 +826,12 @@ UL_REQUIRES_LINUX([losetup])
 AM_CONDITIONAL(BUILD_LOSETUP, test "x$build_losetup" = xyes)
 
 
+UL_BUILD_INIT([zramctl], [check])
+UL_REQUIRES_LINUX([zramctl])
+UL_REQUIRES_BUILD([zramctl], [libsmartcols])
+AM_CONDITIONAL([BUILD_ZRAMCTL], [test "x$build_zramctl" = xyes])
+
+
 AC_ARG_ENABLE([cytune],
   AS_HELP_STRING([--disable-cytune], [do not build cytune]),
   [], enable_cytune=check

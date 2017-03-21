@@ -39,6 +39,7 @@ dist_noinst_HEADERS += \
 	include/readutmp.h \
 	include/setproctitle.h \
 	include/strutils.h \
+	include/strv.h \
 	include/swapheader.h \
 	include/sysfs.h \
 	include/timer.h \

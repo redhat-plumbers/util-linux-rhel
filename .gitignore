@@ -174,3 +174,4 @@ tests/run.sh.trs
 /whereis
 /wipefs
 /write
+/zramctl

@@ -27,7 +27,8 @@ libcommon_la_SOURCES = \
 	lib/ttyutils.c \
 	lib/xgetpass.c \
 	lib/exec_shell.c \
-	lib/readutmp.c
+	lib/readutmp.c \
+	lib/strv.c
 
 if LINUX
 libcommon_la_SOURCES += \

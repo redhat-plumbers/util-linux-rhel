@@ -309,6 +309,14 @@ static inline int usleep(useconds_t usec)
 #endif
 
 /*
+ * Macros to convert #define'itions to strings, for example
+ * #define XYXXY 42
+ * printf ("%s=%s\n", stringify(XYXXY), stringify_value(XYXXY));
+ */
+#define stringify_value(s) stringify(s)
+#define stringify(s) #s
+
+/*
  * Note that sysconf(_SC_GETPW_R_SIZE_MAX) returns *initial* suggested size for
  * pwd buffer and in some cases it is not large enough. See POSIX and
  * getpwnam_r man page for more details.
