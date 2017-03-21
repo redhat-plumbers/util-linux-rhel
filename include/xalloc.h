@@ -99,6 +99,16 @@ static inline int __attribute__ ((__format__(printf, 2, 3)))
 }
 
 
+static inline int  __attribute__ ((__format__(printf, 2, 0)))
+xvasprintf(char **strp, const char *fmt, va_list ap)
+{
+	int ret = vasprintf(&(*strp), fmt, ap);
+	if (ret < 0)
+		err(XALLOC_EXIT_CODE, "cannot allocate string");
+	return ret;
+}
+
+
 static inline char *xgethostname(void)
 {
 	char *name;

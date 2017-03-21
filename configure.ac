@@ -1059,8 +1059,9 @@ AM_CONDITIONAL(BUILD_LSBLK, test "x$build_lsblk" = xyes)
 
 UL_BUILD_INIT([lscpu], [check])
 UL_REQUIRES_LINUX([lscpu])
+UL_REQUIRES_BUILD([lscpu], [libsmartcols])
 UL_REQUIRES_HAVE([lscpu], [cpu_set_t], [cpu_set_t type])
-AM_CONDITIONAL(BUILD_LSCPU, test "x$build_lscpu" = xyes)
+AM_CONDITIONAL([BUILD_LSCPU], [test "x$build_lscpu" = xyes])
 
 
 UL_BUILD_INIT([lslogins], [check])
