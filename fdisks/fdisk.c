@@ -70,7 +70,7 @@ static const struct menulist_descr menulist[] = {
 	{'c', N_("toggle the dos compatibility flag"), {FDISK_DISKLABEL_DOS, 0}},
 	{'c', N_("toggle the mountable flag"), {FDISK_DISKLABEL_SUN, 0}},
 	{'d', N_("delete a partition"), {FDISK_DISKLABEL_DOS | FDISK_DISKLABEL_SUN | FDISK_DISKLABEL_SGI | FDISK_DISKLABEL_OSF | FDISK_DISKLABEL_GPT, 0}},
-	{'d', N_("print the raw data in the partition table"), {0, FDISK_DISKLABEL_ANY}},
+	{'d', N_("print the raw data in the first sector"), {0, FDISK_DISKLABEL_ANY}},
 	{'e', N_("change number of extra sectors per cylinder"), {0, FDISK_DISKLABEL_SUN}},
 	{'e', N_("edit drive data"), {FDISK_DISKLABEL_OSF, 0}},
 	{'e', N_("list extended partitions"), {0, FDISK_DISKLABEL_DOS}},
@@ -94,7 +94,7 @@ static const struct menulist_descr menulist[] = {
 	{'s', N_("change number of sectors/track"), {0, FDISK_DISKLABEL_DOS | FDISK_DISKLABEL_SUN}},
 	{'s', N_("create a new empty Sun disklabel"), {~FDISK_DISKLABEL_OSF, 0}},
 	{'s', N_("show complete disklabel"), {FDISK_DISKLABEL_OSF, 0}},
-	{'t', N_("change a partition's system id"), {FDISK_DISKLABEL_DOS | FDISK_DISKLABEL_SUN | FDISK_DISKLABEL_SGI | FDISK_DISKLABEL_OSF, 0}},
+	{'t', N_("change a partition's system id"), {FDISK_DISKLABEL_DOS | FDISK_DISKLABEL_SUN | FDISK_DISKLABEL_SGI | FDISK_DISKLABEL_OSF | FDISK_DISKLABEL_GPT, 0}},
 	{'u', N_("change display/entry units"), {FDISK_DISKLABEL_DOS | FDISK_DISKLABEL_SUN | FDISK_DISKLABEL_SGI | FDISK_DISKLABEL_OSF, 0}},
 	{'v', N_("verify the partition table"), {FDISK_DISKLABEL_DOS | FDISK_DISKLABEL_SUN | FDISK_DISKLABEL_SGI | FDISK_DISKLABEL_GPT,
 						 FDISK_DISKLABEL_DOS | FDISK_DISKLABEL_SUN | FDISK_DISKLABEL_SGI | FDISK_DISKLABEL_GPT}},
@@ -1018,6 +1018,11 @@ static void command_prompt(struct fdisk_context *cxt)
 		fdisk_context_switch_label(cxt, "dos");
 	}
 
+	if (fdisk_is_disklabel(cxt, GPT) && fdisk_context_use_cylinders(cxt)) {
+		printf(_("Use cylinders for GPT is unsupported. "));
+		toggle_units(cxt);
+	}
+
 	while (1) {
 
 		assert(cxt->label);
@@ -1073,6 +1078,8 @@ static void command_prompt(struct fdisk_context *cxt)
 			break;
 		case 'g':
 			fdisk_create_disklabel(cxt, "gpt");
+			if (fdisk_is_disklabel(cxt, GPT) && fdisk_context_use_cylinders(cxt))
+				toggle_units(cxt);
 			break;
 		case 'G':
 			fdisk_create_disklabel(cxt, "sgi");
@@ -1107,7 +1114,10 @@ static void command_prompt(struct fdisk_context *cxt)
 			change_partition_type(cxt);
 			break;
 		case 'u':
-			toggle_units(cxt);
+			if (fdisk_is_disklabel(cxt, GPT) && !fdisk_context_use_cylinders(cxt))
+				printf(_("Use cylinders for GPT is unsupported."));
+			else
+				toggle_units(cxt);
 			break;
 		case 'v':
 			verify(cxt);
