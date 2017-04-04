@@ -82,6 +82,7 @@ test_ismounted_LDADD = libcommon.la
 
 test_wholedisk_SOURCES = lib/wholedisk.c
 test_wholedisk_CFLAGS = -DTEST_PROGRAM
+test_wholedisk_LDADD = libcommon.la
 
 test_mangle_SOURCES = lib/mangle.c
 test_mangle_CFLAGS = -DTEST_PROGRAM
