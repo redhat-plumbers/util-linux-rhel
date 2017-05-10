@@ -1690,7 +1690,7 @@ static int gpt_create_disklabel(struct fdisk_context *cxt)
 {
 	int rc = 0;
 	ssize_t esz = 0;
-	struct gpt_guid *uid;
+	char str[37];
 	struct fdisk_gpt_label *gpt;
 
 	assert(cxt);
@@ -1746,16 +1746,8 @@ static int gpt_create_disklabel(struct fdisk_context *cxt)
 	cxt->label->nparts_max = le32_to_cpu(gpt->pheader->npartition_entries);
 	cxt->label->nparts_cur = 0;
 
-	uid = &gpt->pheader->disk_guid;
-	fdisk_info(cxt, _("Building a new GPT disklabel "
-			    "(GUID: %08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X)\n"),
-			    uid->time_low, uid->time_mid,
-			    uid->time_hi_and_version,
-			    uid->clock_seq_hi,
-			    uid->clock_seq_low,
-			    uid->node[0], uid->node[1],
-			    uid->node[2], uid->node[3],
-			    uid->node[4], uid->node[5]);
+	guid_to_string(&gpt->pheader->disk_guid, str);
+	fdisk_info(cxt, _("Building a new GPT disklabel (GUID: %s)\n"), str);
 	fdisk_label_set_changed(cxt->label, 1);
 done:
 	return rc;
