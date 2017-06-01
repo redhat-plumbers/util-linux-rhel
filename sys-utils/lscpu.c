@@ -1550,11 +1550,11 @@ get_cell_data(struct lscpu_desc *desc, int idx, int col,
 				 is_cpu_online(desc, cpu) ? _("yes") : _("no"));
 		break;
 	case COL_MAXMHZ:
-		if (desc->maxmhz)
+		if (desc->maxmhz && desc->maxmhz[idx])
 			xstrncpy(buf, desc->maxmhz[idx], bufsz);
 		break;
 	case COL_MINMHZ:
-		if (desc->minmhz)
+		if (desc->minmhz && desc->minmhz[idx])
 			xstrncpy(buf, desc->minmhz[idx], bufsz);
 		break;
 	}
@@ -1897,9 +1897,9 @@ print_summary(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 		print_s(_("CPU dynamic MHz:"), desc->dynamic_mhz);
 	if (desc->static_mhz)
 		print_s(_("CPU static MHz:"), desc->static_mhz);
-	if (desc->maxmhz)
+	if (desc->maxmhz && desc->maxmhz[0])
 		print_s(_("CPU max MHz:"), desc->maxmhz[0]);
-	if (desc->minmhz)
+	if (desc->minmhz && desc->minmhz[0])
 		print_s(_("CPU min MHz:"), desc->minmhz[0]);
 	if (desc->bogomips)
 		print_s(_("BogoMIPS:"), desc->bogomips);
