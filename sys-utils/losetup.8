@@ -80,7 +80,10 @@ without --list) is deprecated.
 .IP "\fB\-c, \-\-set-capacity\fP \fIloopdev\fP
 force loop driver to reread size of the file associated with the specified loop device
 .IP "\fB\-d, \-\-detach\fP \fIloopdev\fP..."
-detach the file or device associated with the specified loop device(s)
+detach the file or device associated with the specified loop device(s). Note
+that since Linux v3.7 kernel uses "lazy device destruction".  The detach
+operation does not return EBUSY error anymore if device is actively used by
+system, but it is marked by autoclear flag and destroyed later.
 .IP "\fB\-D, \-\-detach-all\fP"
 detach all associated loop devices
 .IP "\fB\-f, \-\-find\fP"
