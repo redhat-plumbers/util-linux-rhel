@@ -1280,6 +1280,7 @@ static char *xgetdomainname(void)
 	return NULL;
 }
 
+
 static char *read_os_release(struct options *op, const char *varname)
 {
 	int fd = -1;
@@ -1329,6 +1330,11 @@ static char *read_os_release(struct options *op, const char *varname)
 			continue;
 		}
 		p += varsz;
+		p += strspn(p, " \t\n\r");
+
+		if (*p != '=')
+			continue;
+
 		p += strspn(p, " \t\n\r=\"");
 		eol = p + strcspn(p, "\n\r");
 		*eol = '\0';
