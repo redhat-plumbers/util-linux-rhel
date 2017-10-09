@@ -315,6 +315,7 @@ AC_CHECK_FUNCS([ \
 	__fpending \
 	secure_getenv \
 	__secure_getenv \
+	eaccess \
 	err \
 	errx \
 	fsync \
