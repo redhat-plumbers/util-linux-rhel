@@ -33,12 +33,8 @@ fdisk \- manipulate disk partition table
 (in the first form of invocation)
 is a menu-driven program for creation and manipulation of
 partition tables.
-It understands DOS-type partition tables and BSD- or SUN-type disklabels.
-
-.B fdisk
-does not understand GUID partition tables (GPTs) and it is not designed
-for large partitions.  In these cases, use the more advanced GNU
-.BR parted (8).
+It understands GPT (experimental for now), MBR, Sun, SGI and BSD
+partition tables.
 
 .B fdisk
 does not use DOS-compatible mode and cylinders as display units by default.
