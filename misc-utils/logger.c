@@ -49,6 +49,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <getopt.h>
+#include <sys/types.h>
+#include <pwd.h>
 
 #include "c.h"
 #include "closestream.h"
@@ -183,9 +185,20 @@ inet_socket(const char *servername, const char *port, const int socket_type)
 	return fd;
 }
 
+static char const *xgetlogin(void)
+{
+	char const *cp;
+	struct passwd *pw;
+
+	if (!(cp = getlogin()) || !*cp)
+		cp = (pw = getpwuid(geteuid()))? pw->pw_name : "<someone>";
+	return cp;
+}
+
 static void
 mysyslog(int fd, int logflags, int pri, char *tag, char *msg) {
-       char *buf, pid[30], *cp, *tp;
+       char *buf, pid[30], *tp;
+       const char *cp;
        time_t now;
 
        if (fd > -1) {
@@ -193,13 +206,7 @@ mysyslog(int fd, int logflags, int pri, char *tag, char *msg) {
                        snprintf (pid, sizeof(pid), "[%d]", getpid());
 	       else
 		       pid[0] = 0;
-               if (tag)
-		       cp = tag;
-	       else {
-		       cp = getlogin();
-		       if (!cp)
-			       cp = "<someone>";
-	       }
+	       cp = tag ? tag : xgetlogin();
                (void)time(&now);
 	       tp = ctime(&now)+4;
 
@@ -334,7 +341,7 @@ main(int argc, char **argv) {
 	else if (usock)
 		LogSock = unix_socket(usock, socket_type);
 	else
-		openlog(tag ? tag : getlogin(), logflags, 0);
+		openlog(tag ? tag : xgetlogin(), logflags, 0);
 
 	buf = xcalloc(1, max_message_size);
 
