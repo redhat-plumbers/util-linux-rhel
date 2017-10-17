@@ -162,12 +162,15 @@ clone_offset(struct wipe_desc *wp0)
 }
 
 static struct wipe_desc *
-get_desc_for_probe(struct wipe_desc *wp, blkid_probe pr)
+get_desc_for_probe(struct wipe_desc *wp, blkid_probe pr, int *found)
 {
 	const char *off, *type, *mag, *p, *usage = NULL;
 	size_t len;
 	loff_t offset;
 	int rc, ispt = 0;
+
+	if (found)
+		*found = 0;
 
 	/* superblocks */
 	if (blkid_probe_lookup_value(pr, "TYPE", &type, NULL) == 0) {
@@ -215,6 +218,8 @@ get_desc_for_probe(struct wipe_desc *wp, blkid_probe pr)
 	if (blkid_probe_lookup_value(pr, "UUID", &p, NULL) == 0)
 		wp->uuid = xstrdup(p);
 
+	if (found)
+		*found = 1;
 	return wp;
 }
 
@@ -266,7 +271,7 @@ read_offsets(struct wipe_desc *wp, const char *devname)
 		return NULL;
 
 	while (blkid_do_probe(pr) == 0) {
-		wp = get_desc_for_probe(wp, pr);
+		wp = get_desc_for_probe(wp, pr, NULL);
 		if (!wp)
 			break;
 	}
@@ -347,9 +352,13 @@ do_wipe(struct wipe_desc *wp, const char *devname, int noact, int all, int quiet
 	wp0 = clone_offset(wp);
 
 	while (blkid_do_probe(pr) == 0) {
-		wp = get_desc_for_probe(wp, pr);
+		int found = 0;
+
+		wp = get_desc_for_probe(wp, pr, &found);
 		if (!wp)
 			break;
+		if (!found)
+			continue;
 
 		/* Check if offset is in provided list */
 		w = wp0;
