@@ -61,6 +61,23 @@ library.  It can determine the type of content (e.g. filesystem or swap)
 that a block device holds, and also the attributes (tokens, NAME=value pairs)
 from the content metadata (e.g. LABEL or UUID fields).
 .PP
+.B It is recommended to use
+.BR lsblk (8)
+.B command to get information about block devices, or lsblk --fs to get an overview of filesystems, or
+.BR findmnt (8)
+.B to search in already mounted filesystems.
+.PP
+.RS
+.BR lsblk (8)
+provides more information, better control on output formatting, easy to use in
+scripts and it does not require root permissions to get actual information.
+.B blkid
+reads information directly from devices and for non-root users
+it returns cached unverified information.
+.B blkid
+is mostly designed for system services and to test libblkid functionality.
+.RE
+.PP
 When
 .I device
 is specified, tokens from only this device are displayed.
@@ -71,21 +88,19 @@ If none is given, all devices which appear in
 .I /proc/partitions
 are shown, if they are recognized.
 .PP
-Note that
-.B blkid
-reads information directly from devices and for non-root users
-it returns cached unverified information.  It is better to use
-.B lsblk --fs
-to get a user-friendly overview of filesystems and devices.
-.BR lsblk (8)
-is also easy to use in scripts.
-.B blkid
-is mostly designed for system services and to test libblkid functionality.
-.PP
 .B blkid
 has two main forms of operation: either searching for a device with a
 specific NAME=value pair, or displaying NAME=value pairs for one or
 more specified devices.
+.PP
+For security reasons
+.B blkid
+silently ignores all devices where the probing result is ambivalent (multiple
+colliding filesystems are detected).  The low-level probing mode (\fB-p\fR)
+provides more information and extra return code in this case.
+It's recommended to use
+.BR wipefs (8)
+to get a detailed overview and to erase obsolete stuff (magic strings) from the device.
 .SH OPTIONS
 The \fIsize\fR and \fIoffset\fR arguments may be followed by the multiplicative
 suffixes like KiB (=1024), MiB (=1024*1024), and so on for GiB, TiB, PiB, EiB, ZiB and YiB
@@ -264,7 +279,7 @@ identified, an exit code of 2 is returned.
 
 For usage or other errors, an exit code of 4 is returned.
 
-If an ambivalent low-level probing result was detected, an exit code of 8 is
+If an ambivalent probing result was detected by low-level probing mode (\fB\-p\fR), an exit code of 8 is
 returned.
 .SH CONFIGURATION FILE
 The standard location of the
