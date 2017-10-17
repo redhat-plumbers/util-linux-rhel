@@ -502,21 +502,77 @@ function ts_fdisk_clean {
 }
 
 function ts_scsi_debug_init {
+	local devname
+	local t
+	TS_DEVICE="none"
 
-	modprobe --dry-run --quiet scsi_debug
-	[ "$?" == 0 ] || ts_skip "missing scsi_debug module"
+	# dry run is not really reliable, real modprobe may still fail
+	modprobe --dry-run --quiet scsi_debug &>/dev/null \
+		|| ts_skip "missing scsi_debug module (dry-run)"
 
-	rmmod scsi_debug &> /dev/null
-	modprobe scsi_debug $*
-	[ "$?" == 0 ] || ts_die "Cannot init device"
+	# skip if still in use or removal of modules not supported at all
+	# We don't want a slow timeout here so we don't use ts_scsi_debug_rmmod!
+	modprobe -r scsi_debug &>/dev/null \
+		|| ts_skip "cannot remove scsi_debug module (rmmod)"
 
-	DEVNAME=$(grep --with-filename scsi_debug /sys/block/*/device/model | awk -F '/' '{print $4}')
-	[ "x${DEVNAME}" == "x" ] && ts_die "Cannot find device"
+	modprobe -b scsi_debug "$@" &>/dev/null \
+		|| ts_skip "cannot load scsi_debug module (modprobe)"
 
-	DEVICE="/dev/${DEVNAME}"
+	# it might be still not loaded, modprobe.conf or whatever
+	lsmod 2>/dev/null | grep -q "^scsi_debug " \
+		|| ts_skip "scsi_debug module not loaded (lsmod)"
 
-	sleep 1
 	udevadm settle
 
-	echo $DEVICE
+	# wait for device if udevadm settle does not work
+	for t in 0 0.02 0.05 0.1 1; do
+		sleep $t
+		devname=$(grep --with-filename scsi_debug /sys/block/*/device/model) && break
+	done
+	[ -n "${devname}" ] || ts_die "timeout waiting for scsi_debug device"
+
+	devname=$(echo $devname | awk -F '/' '{print $4}')
+	TS_DEVICE="/dev/${devname}"
+
+	# TODO validate that device is really up, for now just a warning on stderr
+	test -b $TS_DEVICE || echo "warning: scsi_debug device is still down" >&2
+}
+
+# automatically called once in ts_cleanup_on_exit()
+function ts_scsi_debug_rmmod {
+	local err=1
+	local t
+	local lastmsg
+
+	# Return early most importantly in case we are not root or the module does
+	# not exist at all.
+	[ $UID -eq 0 ] || return 0
+	[ -n "$TS_DEVICE" ] || return 0
+	lsmod 2>/dev/null | grep -q "^scsi_debug " || return 0
+
+	udevadm settle
+
+	# wait for successful rmmod if udevadm settle does not work
+	for t in 0 0.02 0.05 0.1 1; do
+		sleep $t
+		lastmsg="$(modprobe -r scsi_debug 2>&1)" && err=0 && break
+	done
+
+	if [ "$err" = "1" ]; then
+		ts_log "rmmod failed: '$lastmsg'"
+		ts_log "timeout removing scsi_debug module (rmmod)"
+		return 1
+	fi
+	if lsmod | grep -q "^scsi_debug "; then
+		ts_log "BUG! scsi_debug still loaded"
+		return 1
+	fi
+
+	# TODO Do we need to validate that all devices are gone?
+	udevadm settle
+	test -b "$TS_DEVICE" && echo "warning: scsi_debug device is still up" >&2
+
+	# TODO unset TS_DEVICE, check that nobody uses it later, e.g. ts_fdisk_clean
+
+	return 0
 }
