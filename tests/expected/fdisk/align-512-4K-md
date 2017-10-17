@@ -69,7 +69,7 @@ Select (default p): Partition number (2-4, default 2): First sector (22528-10009
 Last sector, +sectors or +size{K,M,G} (22528-100095, default 100095): Partition 2 of type Linux and of size 10 MiB is set
 
 Command (m for help): 
-Disk /dev/md8: 51 MB, 51249152 bytes, 100096 sectors
+Disk /dev/...: 51 MB, 51249152 bytes, 100096 sectors
 Units = sectors of 1 * 512 = 512 bytes
 Sector size (logical/physical): 512 bytes / 4096 bytes
 I/O size (minimum/optimal): 65536 bytes / <removed> bytes
@@ -77,8 +77,8 @@ Disk label type: dos
 
 
     Device Boot      Start         End      Blocks   Id  System
-/dev/md8p1            2048       22527       10240   83  Linux
-/dev/md8p2           22528       43007       10240   83  Linux
+/dev/...p1            2048       22527       10240   83  Linux
+/dev/...p2           22528       43007       10240   83  Linux
 
 Command (m for help): The partition table has been altered!
 

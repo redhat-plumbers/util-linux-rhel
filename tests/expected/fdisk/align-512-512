@@ -50,7 +50,7 @@ Last sector, +sectors or +size{K,M,G} (90112-102399, default 102399): Using defa
 Partition 7 of type Linux and of size 6 MiB is set
 
 Command (m for help): 
-Disk /dev/loop0: 52 MB, 52428800 bytes, 102400 sectors
+Disk /dev/...: 52 MB, 52428800 bytes, 102400 sectors
 Units = sectors of 1 * 512 = 512 bytes
 Sector size (logical/physical): 512 bytes / 512 bytes
 I/O size (minimum/optimal): 512 bytes / <removed> bytes
@@ -58,12 +58,12 @@ Disk label type: dos
 
 
       Device Boot      Start         End      Blocks   Id  System
-/dev/loop0p1            2048       22527       10240   83  Linux
-/dev/loop0p2           22528       43007       10240   83  Linux
-/dev/loop0p3           43008       63487       10240   83  Linux
-/dev/loop0p4           63488      102399       19456    5  Extended
-/dev/loop0p5           65536       75775        5120   83  Linux
-/dev/loop0p6           77824       88063        5120   83  Linux
-/dev/loop0p7           90112      102399        6144   83  Linux
+/dev/...p1            2048       22527       10240   83  Linux
+/dev/...p2           22528       43007       10240   83  Linux
+/dev/...p3           43008       63487       10240   83  Linux
+/dev/...p4           63488      102399       19456    5  Extended
+/dev/...p5           65536       75775        5120   83  Linux
+/dev/...p6           77824       88063        5120   83  Linux
+/dev/...p7           90112      102399        6144   83  Linux
 
 Command (m for help): 
