@@ -22,6 +22,7 @@ TS_DESC="MD raid1 (last partition)"
 . $TS_TOPDIR/functions.sh
 ts_init "$*"
 ts_skip_nonroot
+ts_check_prog "mdadm"
 
 # set global variable TS_DEVICE
 ts_scsi_debug_init dev_size_mb=51 sector_size=512
