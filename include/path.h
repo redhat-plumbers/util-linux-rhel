@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stdint.h>
 
+extern int path_set_prefix(const char *);
+
+extern const char *path_get(const char *path, ...);
+
 extern char *path_strdup(const char *path, ...)
 			__attribute__ ((__format__ (__printf__, 1, 2)));
 extern FILE *path_fopen(const char *mode, int exit_on_err, const char *path, ...)
@@ -27,7 +31,6 @@ extern cpu_set_t *path_read_cpuset(int, const char *path, ...)
 			      __attribute__ ((__format__ (__printf__, 2, 3)));
 extern cpu_set_t *path_read_cpulist(int, const char *path, ...)
 			       __attribute__ ((__format__ (__printf__, 2, 3)));
-extern void path_set_prefix(const char *);
 #endif /* HAVE_CPU_SET_T */
 
 #endif /* UTIL_LINUX_PATH_H */

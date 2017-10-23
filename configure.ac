@@ -1138,6 +1138,25 @@ UL_REQUIRES_SYSCALL_CHECK([pivot_root], [UL_CHECK_SYSCALL([pivot_root])])
 AM_CONDITIONAL(BUILD_PIVOT_ROOT, test "x$build_pivot_root" = xyes)
 
 
+AC_ARG_ENABLE([lsmem],
+  AS_HELP_STRING([--disable-lsmem], [do not build lsmem]),
+  [], enable_lsmem=check
+)
+UL_BUILD_INIT([lsmem])
+UL_REQUIRES_LINUX([lsmem])
+UL_REQUIRES_BUILD([lsmem], [libsmartcols])
+AM_CONDITIONAL([BUILD_LSMEM], [test "x$build_lsmem" = xyes])
+
+
+AC_ARG_ENABLE([chmem],
+  AS_HELP_STRING([--disable-chmem], [do not build chmem]),
+  [], enable_chmem=check
+)
+UL_BUILD_INIT([chmem])
+UL_REQUIRES_LINUX([chmem])
+AM_CONDITIONAL([BUILD_CHMEM], [test "x$build_chmem" = xyes])
+
+
 AC_ARG_ENABLE([elvtune],
   AS_HELP_STRING([--enable-elvtune], [build elvtune (only works with 2.2 and 2.4 kernels)]),
   [], enable_elvtune=no

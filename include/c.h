@@ -302,6 +302,16 @@ static inline int usleep(useconds_t usec)
 
 #define UTIL_LINUX_VERSION _("%s from %s\n"), program_invocation_short_name, PACKAGE_STRING
 
+/* backported to RHEL */
+#define USAGE_COLUMNS    _("\nAvailable output columns:\n")
+#define USAGE_OPTSTR_HELP     _("display this help")
+#define USAGE_OPTSTR_VERSION  _("display version")
+#define USAGE_HELP_OPTIONS(marg_dsc) \
+		"%-" #marg_dsc "s%s\n" \
+		"%-" #marg_dsc "s%s\n" \
+		, " -h, --help",    USAGE_OPTSTR_HELP \
+		, " -V, --version", USAGE_OPTSTR_VERSION
+
 /*
  * scanf modifiers for "strings allocation"
  */

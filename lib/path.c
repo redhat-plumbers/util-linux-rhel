@@ -38,6 +38,20 @@
 static size_t prefixlen;
 static char pathbuf[PATH_MAX];
 
+int
+path_set_prefix(const char *prefix)
+{
+	size_t len = strlen(prefix);
+
+	if (len >= sizeof(pathbuf) - 1) {
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+	prefixlen = len;
+	strcpy(pathbuf, prefix);
+	return 0;
+}
+
 static const char *
 path_vcreate(const char *path, va_list ap)
 {
@@ -47,6 +61,19 @@ path_vcreate(const char *path, va_list ap)
 	else
 		vsnprintf(pathbuf, sizeof(pathbuf), path, ap);
 	return pathbuf;
+}
+
+const char *
+path_get(const char *path, ...)
+{
+	const char *p;
+	va_list ap;
+
+	va_start(ap, path);
+	p = path_vcreate(path, ap);
+	va_end(ap);
+
+	return p;
 }
 
 char *
@@ -246,13 +273,6 @@ path_read_cpulist(int maxcpus, const char *path, ...)
 
 	return set;
 }
-
 #endif /* HAVE_CPU_SET_T */
 
-void
-path_set_prefix(const char *prefix)
-{
-	prefixlen = strlen(prefix);
-	strncpy(pathbuf, prefix, sizeof(pathbuf));
-	pathbuf[sizeof(pathbuf) - 1] = '\0';
-}
+
