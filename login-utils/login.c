@@ -178,6 +178,7 @@ sa_family_t hostfamily;		/* used in checktty.c */
 char	*hostname;		/* idem */
 static char	*username, *tty_name, *tty_number;
 static char	thishost[100];
+static int	nohost;
 static int	failures = 1;
 static pid_t	pid;
 
@@ -368,7 +369,7 @@ static const char *loginpam_get_prompt()
 	char *prompt, *dflt_prompt = _("login: ");
 	size_t sz;
 
-	if (!*thishost)
+	if (nohost || !*thishost)
 		return dflt_prompt;
 
 	sz = strlen(thishost) + 1 + strlen(dflt_prompt) + 1;
@@ -453,10 +454,14 @@ main(int argc, char **argv)
     fflag = hflag = pflag = 0;
     passwd_req = 1;
 
-    while ((ch = getopt(argc, argv, "fh:p")) != -1)
+    while ((ch = getopt(argc, argv, "fHh:p")) != -1)
       switch (ch) {
 	case 'f':
 	  fflag = 1;
+	  break;
+
+	case 'H':
+	  nohost = 1;
 	  break;
 
 	case 'h':

@@ -4,13 +4,20 @@
 .SH NAME
 login \- sign on
 .SH SYNOPSIS
-.BR "login [ " name " ]"
-.br
-.B "login \-p"
-.br
-.BR "login \-h " hostname
-.br
-.BR "login \-f " name
+.B login
+[
+.BR \-p
+] [
+.BR \-h
+.IR hostname
+] [
+.BR \-H
+] [
+.BR \-f
+.IR username
+|
+.IR username
+]
 .SH DESCRIPTION
 .B login
 is used when signing onto a system.
@@ -124,7 +131,13 @@ necessary to create a proper PAM config files (e.g.
 and 
 .I /etc/pam.d/remote
 ).
-
+.TP
+.B \-H
+Used by other servers (i.e.,
+.BR telnetd (8))
+to tell
+.B login
+that printing the hostname should be suppressed in the login: prompt.
 .SH "SPECIAL ACCESS RESTRICTIONS"
 The file
 .I /etc/securetty
