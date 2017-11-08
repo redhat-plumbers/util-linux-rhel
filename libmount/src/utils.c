@@ -651,18 +651,37 @@ done:
 	return rc;
 }
 
-static int try_write(const char *filename)
+static int try_write(const char *filename, const char *directory)
 {
 	int rc = 0;
 
 	if (!filename)
 		return -EINVAL;
 
+	DBG(UTILS, mnt_debug("try write %s dir: %s", filename, directory));
+
 #ifdef HAVE_EACCESS
-	if (eaccess(filename, R_OK|W_OK) != 0)
-		rc = -errno;
-#else
+	/* Try eaccess() first, because open() is overkill, may be monitored by
+	 * audit and we don't want to fill logs by our checks...
+	 */
+	if (eaccess(filename, R_OK|W_OK) == 0) {
+		DBG(UTILS, mnt_debug(" access OK"));
+		return 0;
+	} else if (errno != ENOENT) {
+		DBG(UTILS, mnt_debug(" access FAILED"));
+		return -errno;
+	} else if (directory) {
+		/* file does not exist; try if directory is writable */
+		if (eaccess(directory, R_OK|W_OK) != 0)
+			rc = -errno;
+
+		DBG(UTILS, mnt_debug(" access %s [%s]", rc ? "FAILED" : "OK", directory));
+		return rc;
+	} else
+#endif
 	{
+		DBG(UTILS, mnt_debug(" doing open-write test"));
+
 		int fd = open(filename, O_RDWR|O_CREAT|O_CLOEXEC,
 			    S_IWUSR|S_IRUSR|S_IRGRP|S_IROTH);
 		if (fd < 0)
@@ -670,7 +689,6 @@ static int try_write(const char *filename)
 		else
 			close(fd);
 	}
-#endif
 	return rc;
 }
 
@@ -704,7 +722,7 @@ int mnt_has_regular_mtab(const char **mtab, int *writable)
 		/* file exist */
 		if (S_ISREG(st.st_mode)) {
 			if (writable)
-				*writable = !try_write(filename);
+				*writable = !try_write(filename, NULL);
 			return 1;
 		}
 		goto done;
@@ -712,7 +730,7 @@ int mnt_has_regular_mtab(const char **mtab, int *writable)
 
 	/* try to create the file */
 	if (writable) {
-		*writable = !try_write(filename);
+		*writable = !try_write(filename, NULL);
 		if (*writable)
 			return 1;
 	}
@@ -750,7 +768,7 @@ int mnt_has_regular_utab(const char **utab, int *writable)
 		/* file exist */
 		if (S_ISREG(st.st_mode)) {
 			if (writable)
-				*writable = !try_write(filename);
+				*writable = !try_write(filename, NULL);
 			return 1;
 		}
 		goto done;	/* it's not regular file */
@@ -767,11 +785,13 @@ int mnt_has_regular_utab(const char **utab, int *writable)
 		rc = mkdir(dirname, S_IWUSR|
 				    S_IRUSR|S_IRGRP|S_IROTH|
 				    S_IXUSR|S_IXGRP|S_IXOTH);
-		free(dirname);
-		if (rc && errno != EEXIST)
+		if (rc && errno != EEXIST) {
+			free(dirname);
 			goto done;			/* probably EACCES */
+		}
 
-		*writable = !try_write(filename);
+		*writable = !try_write(filename, dirname);
+		free(dirname);
 		if (*writable)
 			return 1;
 	}

@@ -278,7 +278,7 @@ struct libmnt_table {
 	struct list_head	ents;	/* list of entries (libmnt_fs) */
 };
 
-extern struct libmnt_table *__mnt_new_table_from_file(const char *filename, int fmt);
+extern struct libmnt_table *__mnt_new_table_from_file(const char *filename, int fmt, int empty_for_enoent);
 
 /*
  * Tab file format

@@ -567,6 +567,7 @@ leave:
 
 	unlink(uq);	/* be paranoid */
 	free(uq);
+	DBG(UPDATE, mnt_debug_h(upd, "%s: done [rc=%d]", upd->filename, rc));
 	return rc;
 }
 
@@ -600,7 +601,7 @@ static int update_add_entry(struct libmnt_update *upd, struct libmnt_lock *lc)
 		return rc;
 
 	tb = __mnt_new_table_from_file(upd->filename,
-			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB);
+			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB, 1);
 	if (tb)
 		rc = add_file_entry(tb, upd);
 	if (lc)
@@ -626,7 +627,7 @@ static int update_remove_entry(struct libmnt_update *upd, struct libmnt_lock *lc
 		return rc;
 
 	tb = __mnt_new_table_from_file(upd->filename,
-			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB);
+			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB, 1);
 	if (tb) {
 		struct libmnt_fs *rem = mnt_table_find_target(tb, upd->target, MNT_ITER_BACKWARD);
 		if (rem) {
@@ -656,7 +657,7 @@ static int update_modify_target(struct libmnt_update *upd, struct libmnt_lock *l
 		return rc;
 
 	tb = __mnt_new_table_from_file(upd->filename,
-			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB);
+			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB, 1);
 	if (tb) {
 		struct libmnt_fs *cur = mnt_table_find_target(tb,
 				mnt_fs_get_srcpath(upd->fs), MNT_ITER_BACKWARD);
@@ -693,7 +694,7 @@ static int update_modify_options(struct libmnt_update *upd, struct libmnt_lock *
 		return rc;
 
 	tb = __mnt_new_table_from_file(upd->filename,
-			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB);
+			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB, 1);
 	if (tb) {
 		struct libmnt_fs *cur = mnt_table_find_target(tb,
 					mnt_fs_get_target(fs),
