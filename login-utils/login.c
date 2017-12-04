@@ -116,6 +116,7 @@
 #include "xstrncpy.h"
 #include "nls.h"
 #include "linux_version.h"
+#include "logindefs.h"
 
 
 #ifdef HAVE_SECURITY_PAM_MISC_H
@@ -369,7 +370,9 @@ static const char *loginpam_get_prompt()
 	char *prompt, *dflt_prompt = _("login: ");
 	size_t sz;
 
-	if (nohost || !*thishost)
+	if (nohost
+	    || !*thishost
+	    || getlogindefs_bool("LOGIN_PLAIN_PROMPT", 0) == 1)
 		return dflt_prompt;
 
 	sz = strlen(thishost) + 1 + strlen(dflt_prompt) + 1;
@@ -381,21 +384,6 @@ static const char *loginpam_get_prompt()
 	return prompt;
 }
 #endif
-
-/*
- * We need to check effective UID/GID. For example $HOME could be on root
- * squashed NFS or on NFS with UID mapping and access(2) uses real UID/GID.
- * The open(2) seems as the surest solution.
- * -- kzak@redhat.com (10-Apr-2009)
- */
-int
-effective_access(const char *path, int mode)
-{
-	int fd = open(path, mode);
-	if (fd != -1)
-		close(fd);
-	return fd == -1 ? -1 : 0;
-}
 
 int
 main(int argc, char **argv)

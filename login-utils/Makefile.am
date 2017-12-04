@@ -61,7 +61,8 @@ chfn_SOURCES = chfn.c $(chfn_chsh_common)
 chsh_SOURCES = chsh.c $(chfn_chsh_common)
 chfn_chsh_common = islocal.c setpwnam.c islocal.h my_crypt.h setpwnam.h \
 	../lib/env.c
-login_SOURCES = login.c login.h my_crypt.h ../lib/setproctitle.c ../lib/linux_version.c
+login_SOURCES = login.c login.h my_crypt.h ../lib/setproctitle.c ../lib/linux_version.c \
+		logindefs.c logindefs.h
 newgrp_SOURCES = newgrp.c my_crypt.h
 vipw_SOURCES = vipw.c setpwnam.h
 

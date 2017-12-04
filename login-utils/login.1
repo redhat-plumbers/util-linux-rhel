@@ -138,6 +138,26 @@ Used by other servers (i.e.,
 to tell
 .B login
 that printing the hostname should be suppressed in the login: prompt.
+See also LOGIN_PLAIN_PROMPT below if your server does not allow to configure
+.B login
+command line.
+.SH CONFIG FILE ITEMS
+.B login
+reads the
+.IR /etc\:/login.defs (5)
+configuration file.  This support has been backported to RHEL6 and it's limited to the options described below.
+Note that the configuration file could be distributed with another package (e.g. shadow-utils).
+The following configuration items are relevant for
+.BR login (1):
+.PP
+.B LOGIN_PLAIN_PROMPT
+(boolean)
+.RS 4
+Tell login that printing the hostname should be suppressed in the login:
+prompt.  This is alternative to the \fB\-H\fR command line option.  The default
+value is
+.IR no .
+.RE
 .SH "SPECIAL ACCESS RESTRICTIONS"
 The file
 .I /etc/securetty

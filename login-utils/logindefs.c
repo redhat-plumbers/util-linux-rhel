@@ -277,7 +277,6 @@ int effective_access(const char *path, int mode)
 	return fd == -1 ? -1 : 0;
 }
 
-
 /*
  * Check the per-account or the global hush-login setting.
  *
