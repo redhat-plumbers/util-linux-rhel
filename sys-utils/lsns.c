@@ -55,6 +55,9 @@ UL_DEBUG_DEFINE_MASKNAMES(lsns) = UL_DEBUG_EMPTY_MASKNAMES;
 #define DBG(m, x)       __UL_DBG(lsns, LSNS_DEBUG_, m, x)
 #define ON_DBG(m, x)    __UL_DBG_CALL(lsns, LSNS_DEBUG_, m, x)
 
+#define UL_DEBUG_CURRENT_MASK  UL_DEBUG_MASK(lsns)
+#include "debugobj.h"
+
 struct idcache *uid_cache = NULL;
 
 /* column IDs */

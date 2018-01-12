@@ -50,7 +50,7 @@
 
 # define DBG(l,x)	do { \
 				if ((l)->debug) {\
-					fprintf(stderr, "loopdev:  [%p]: ", (l)); \
+					fprintf(stderr, "loopdev: "); \
 					x; \
 				} \
 			} while(0)

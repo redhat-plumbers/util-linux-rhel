@@ -1451,7 +1451,7 @@ int mnt_fs_print_debug(struct libmnt_fs *fs, FILE *file)
 {
 	if (!fs || !file)
 		return -EINVAL;
-	fprintf(file, "------ fs: %p\n", fs);
+	fprintf(file, "------ fs\n");
 	fprintf(file, "source: %s\n", mnt_fs_get_source(fs));
 	fprintf(file, "target: %s\n", mnt_fs_get_target(fs));
 	fprintf(file, "fstype: %s\n", mnt_fs_get_fstype(fs));

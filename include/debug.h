@@ -13,12 +13,15 @@
 struct dbg_mask { char *mname; int val; };
 #define UL_DEBUG_EMPTY_MASKNAMES {{ NULL, 0 }}
 
-#define UL_DEBUG_DEFINE_MASK(m) int m ## _debug_mask
+#define UL_DEBUG_MASK(m)         m ## _debug_mask
+#define UL_DEBUG_DEFINE_MASK(m)  int UL_DEBUG_MASK(m)
 #define UL_DEBUG_DECLARE_MASK(m) extern UL_DEBUG_DEFINE_MASK(m)
 #define UL_DEBUG_DEFINE_MASKNAMES(m) static const struct dbg_mask m ## _masknames[]
 
-/* p - flag prefix, m - flag postfix */
-#define UL_DEBUG_DEFINE_FLAG(p, m) p ## m
+/*
+ * Internal mask flags (above 0xffffff)
+ */
+#define __UL_DEBUG_FL_NOADDR   (1 << 24)       /* Don't print object address */
 
 /* l - library name, p - flag prefix, m - flag postfix, x - function */
 #define __UL_DBG(l, p, m, x) \
@@ -55,6 +58,10 @@ struct dbg_mask { char *mname; int val; };
 				lib ## _debug_mask = parse_envmask(lib ## _masknames, str); \
 		} else \
 			lib ## _debug_mask = mask; \
+		if (lib ## _debug_mask) { \
+			if (getuid() != geteuid() || getgid() != getegid()) \
+				lib ## _debug_mask |= __UL_DEBUG_FL_NOADDR; \
+		} \
 		lib ## _debug_mask |= pref ## INIT; \
 		if (lib ## _debug_mask != pref ## INIT) { \
 			__UL_DBG(lib, pref, INIT, ul_debug("library debug mask: 0x%04x", \
@@ -72,21 +79,7 @@ ul_debug(const char *mesg, ...)
 	va_end(ap);
 	fputc('\n', stderr);
 }
-
-static inline void __attribute__ ((__format__ (__printf__, 2, 3)))
-ul_debugobj(void *handler, const char *mesg, ...)
-{
-	va_list ap;
-
-	if (handler)
-		fprintf(stderr, "[%p]: ", handler);
-	va_start(ap, mesg);
-	vfprintf(stderr, mesg, ap);
-	va_end(ap);
-	fputc('\n', stderr);
-}
-
-static inline int parse_envmask(const struct dbg_mask const flagnames[],
+static inline int parse_envmask(const struct dbg_mask flagnames[],
 				const char *mask)
 {
 	int res;

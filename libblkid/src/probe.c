@@ -145,7 +145,7 @@ blkid_probe blkid_new_probe(void)
 	if (!pr)
 		return NULL;
 
-	DBG(LOWPROBE, blkid_debug("allocate a new probe %p", pr));
+	DBG(LOWPROBE, blkid_debug("allocate a new probe"));
 
 	/* initialize chains */
 	for (i = 0; i < BLKID_NCHAINS; i++) {
@@ -260,7 +260,7 @@ void blkid_free_probe(blkid_probe pr)
 	blkid_probe_reset_buffer(pr);
 	blkid_free_probe(pr->disk_probe);
 
-	DBG(LOWPROBE, blkid_debug("free probe %p", pr));
+	DBG(LOWPROBE, blkid_debug("free probe"));
 	free(pr);
 }
 
@@ -552,8 +552,8 @@ unsigned char *blkid_probe_get_buffer(blkid_probe pr,
 				list_entry(p, struct blkid_bufinfo, bufs);
 
 		if (x->off <= off && off + len <= x->off + x->len) {
-			DBG(LOWPROBE, blkid_debug("\treuse buffer: off=%jd len=%jd pr=%p",
-							x->off, x->len, pr));
+			DBG(LOWPROBE, blkid_debug("\treuse buffer: off=%jd len=%jd",
+							x->off, x->len));
 			bf = x;
 			break;
 		}
@@ -584,8 +584,8 @@ unsigned char *blkid_probe_get_buffer(blkid_probe pr,
 		bf->off = off;
 		INIT_LIST_HEAD(&bf->bufs);
 
-		DBG(LOWPROBE, blkid_debug("\tbuffer read: off=%jd len=%jd pr=%p",
-				off, len, pr));
+		DBG(LOWPROBE, blkid_debug("\tbuffer read: off=%jd len=%jd",
+				off, len));
 
 		ret = read(pr->fd, bf->data, len);
 		if (ret != (ssize_t) len) {
@@ -609,7 +609,7 @@ static void blkid_probe_reset_buffer(blkid_probe pr)
 	if (!pr || list_empty(&pr->buffers))
 		return;
 
-	DBG(LOWPROBE, blkid_debug("reseting probing buffers pr=%p", pr));
+	DBG(LOWPROBE, blkid_debug("reseting probing buffers"));
 
 	while (!list_empty(&pr->buffers)) {
 		struct blkid_bufinfo *bf = list_entry(pr->buffers.next,
@@ -766,9 +766,8 @@ int blkid_probe_set_dimension(blkid_probe pr,
 		return -1;
 
 	DBG(LOWPROBE, blkid_debug(
-		"changing probing area pr=%p: size=%llu, off=%llu "
+		"changing probing area: size=%llu, off=%llu "
 		"-to-> size=%llu, off=%llu",
-		pr,
 		(unsigned long long) pr->size,
 		(unsigned long long) pr->off,
 		(unsigned long long) size,
@@ -840,7 +839,7 @@ int blkid_probe_get_idmag(blkid_probe pr, const struct blkid_idinfo *id,
 static inline void blkid_probe_start(blkid_probe pr)
 {
 	if (pr) {
-		DBG(LOWPROBE, blkid_debug("%p: start probe", pr));
+		DBG(LOWPROBE, blkid_debug("start probe"));
 		pr->cur_chain = NULL;
 		pr->prob_flags = 0;
 		blkid_probe_set_wiper(pr, 0, 0);
@@ -850,7 +849,7 @@ static inline void blkid_probe_start(blkid_probe pr)
 static inline void blkid_probe_end(blkid_probe pr)
 {
 	if (pr) {
-		DBG(LOWPROBE, blkid_debug("%p: end probe", pr));
+		DBG(LOWPROBE, blkid_debug("end probe"));
 		pr->cur_chain = NULL;
 		pr->prob_flags = 0;
 		blkid_probe_set_wiper(pr, 0, 0);

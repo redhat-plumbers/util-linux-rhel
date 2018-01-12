@@ -11,6 +11,8 @@ dist_noinst_HEADERS += \
 	include/colors.h \
 	include/cpuset.h \
 	include/crc32.h \
+	include/debug.h \
+	include/debugobj.h \
 	include/env.h \
 	include/exec_shell.h \
 	include/exitcodes.h \

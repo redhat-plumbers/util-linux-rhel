@@ -38,6 +38,11 @@ void mnt_init_debug(int mask)
 	} else
 		libmount_debug_mask = mask;
 
+	if (libmount_debug_mask) {
+		if (getuid() != geteuid() || getgid() != getegid())
+			libmount_debug_mask |= MNT_DEBUG_FL_NOADDR;
+	}
+
 	libmount_debug_mask |= MNT_DEBUG_INIT;
 
 	if (libmount_debug_mask && libmount_debug_mask != MNT_DEBUG_INIT) {

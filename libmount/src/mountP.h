@@ -51,6 +51,8 @@
 #define MNT_DEBUG_DIFF		(1 << 11)
 #define MNT_DEBUG_ALL		0xFFFF
 
+#define MNT_DEBUG_FL_NOADDR	(1 << 24)
+
 #ifdef CONFIG_LIBMOUNT_DEBUG
 # include <stdio.h>
 # include <stdarg.h>
@@ -91,7 +93,7 @@ mnt_debug_h(void *handler, const char *mesg, ...)
 {
 	va_list ap;
 
-	if (handler)
+	if (handler && !(libmount_debug_mask & MNT_DEBUG_FL_NOADDR))
 		fprintf(stderr, "[%p]: ", handler);
 	va_start(ap, mesg);
 	vfprintf(stderr, mesg, ap);
