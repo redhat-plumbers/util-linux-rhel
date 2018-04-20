@@ -54,7 +54,8 @@ working directory there, or when a swap file on it is in use.  The
 offending process could even be
 .B umount
 itself - it opens libc, and libc in its turn may open for example locale
-files.  A lazy unmount avoids this problem.
+files.  A lazy unmount avoids this problem, but it may introduce another
+issues. See \fB\-\-lazy\fR description bellow.
 .SH OPTIONS
 .TP
 \fB\-a\fR, \fB\-\-all\fR
@@ -107,6 +108,13 @@ Unmount without writing in
 Lazy unmount.  Detach the filesystem from the filesystem hierarchy now,
 and cleanup all references to the filesystem as soon as it is not busy
 anymore.  (Requires kernel 2.4.11 or later.)
+
+A system reboot would be expected in near future if you're going to use this
+option for network filesystem or local filesystem with submounts.  The
+recommended use-case for \fBumount -l\fR is to prevent hangs on shutdown due to
+an unreachable network share where a normal umount will hang due to a downed
+server or a network partition. Remounts of the share will not be possible.
+
 .TP
 \fB\-O\fR, \fB\-\-test\-opts\fR \fIoptions,list\fR
 Indicate that the actions should only be taken on file systems with the
