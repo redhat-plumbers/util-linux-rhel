@@ -20,6 +20,8 @@ TS_HELPER_PARTITIONS="$top_builddir/sample-partitions"
 TS_HELPER_PATHS="$top_builddir/test_pathnames"
 TS_HELPER_STRUTILS="$top_builddir/test_strutils"
 TS_HELPER_SYSINFO="$top_builddir/test_sysinfo"
+TS_HELPER_LIBSMARTCOLS_FROMFILE="$top_builddir/sample-scols-fromfile"
+TS_HELPER_LIBSMARTCOLS_TITLE="$top_builddir/sample-scols-title"
 
 # paths to commands
 TS_CMD_BLKID=${TS_CMD_BLKID-"$top_builddir/blkid"}
