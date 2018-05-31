@@ -6,6 +6,7 @@ libcommon_la_SOURCES = \
 	lib/blkdev.c \
 	lib/canonicalize.c \
 	lib/colors.c \
+	lib/color-names.c \
 	lib/crc32.c \
 	lib/env.c \
 	lib/idcache.c \

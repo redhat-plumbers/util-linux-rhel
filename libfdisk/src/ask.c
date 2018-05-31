@@ -42,7 +42,7 @@ const char *fdisk_ask_get_query(struct fdisk_ask *ask)
 int fdisk_ask_set_query(struct fdisk_ask *ask, const char *str)
 {
 	assert(ask);
-	return !strdup_to_struct_member(ask, query, str) ? -ENOMEM : 0;
+	return strdup_to_struct_member(ask, query, str);
 }
 
 int fdisk_ask_get_type(struct fdisk_ask *ask)
@@ -90,7 +90,7 @@ const char *fdisk_ask_number_get_range(struct fdisk_ask *ask)
 int fdisk_ask_number_set_range(struct fdisk_ask *ask, const char *range)
 {
 	assert(ask);
-	return !strdup_to_struct_member(ask, data.num.range, range) ? -ENOMEM : 0;
+	return strdup_to_struct_member(ask, data.num.range, range);
 }
 
 uint64_t fdisk_ask_number_get_default(struct fdisk_ask *ask)
