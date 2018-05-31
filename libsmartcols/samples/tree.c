@@ -39,7 +39,7 @@ static void setup_columns(struct libscols_table *tb, int notree)
 	return;
 fail:
 	scols_unref_table(tb);
-	err(EXIT_FAILURE, "faild to create output columns");
+	err(EXIT_FAILURE, "failed to create output columns");
 }
 
 /* add a new line to @tb, the content is based on @st */
@@ -104,7 +104,7 @@ fail:
 	return -1;
 }
 
-/* read all entrines from directory addressed by @fd */
+/* read all entries from directory addressed by @fd */
 static int add_children(struct libscols_table *tb,
 			struct libscols_line *ln,
 			int fd)
@@ -142,12 +142,15 @@ static void add_lines(struct libscols_table *tb, const char *dirname)
 static void __attribute__((__noreturn__)) usage(FILE *out)
 {
 	fprintf(out, " %s [options] [<dir> ...]\n\n", program_invocation_short_name);
-	fputs(" -c, --csv            display a csv-like output\n", out);
-	fputs(" -i, --ascii          use ascii characters only\n", out);
-	fputs(" -l, --list           use list format output\n", out);
-	fputs(" -n, --noheadings     don't print headings\n", out);
-	fputs(" -p, --pairs          use key=\"value\" output format\n", out);
-	fputs(" -r, --raw            use raw output format\n", out);
+	fputs(" -c, --csv               display a csv-like output\n", out);
+	fputs(" -i, --ascii             use ascii characters only\n", out);
+	fputs(" -l, --list              use list format output\n", out);
+	fputs(" -n, --noheadings        don't print headings\n", out);
+	fputs(" -p, --pairs             use key=\"value\" output format\n", out);
+	fputs(" -J, --json              use JSON output format\n", out);
+	fputs(" -r, --raw               use raw output format\n", out);
+	fputs(" -S, --range-start <n>   first line to print\n", out);
+	fputs(" -E, --range-end <n>     last line to print\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -155,17 +158,20 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 int main(int argc, char *argv[])
 {
 	struct libscols_table *tb;
-	int c, notree = 0;
+	int c, notree = 0, nstart = -1, nend = -1;
+
 
 	static const struct option longopts[] = {
-		{ "ascii",	0, 0, 'i' },
-		{ "csv",        0, 0, 'c' },
-		{ "list",       0, 0, 'l' },
-		{ "noheadings",	0, 0, 'n' },
-		{ "pairs",      0, 0, 'p' },
-		{ "raw",      0, 0, 'r' },
-
-		{ NULL, 0, 0, 0 },
+		{ "ascii",	0, NULL, 'i' },
+		{ "csv",        0, NULL, 'c' },
+		{ "list",       0, NULL, 'l' },
+		{ "noheadings",	0, NULL, 'n' },
+		{ "pairs",      0, NULL, 'p' },
+		{ "json",       0, NULL, 'J' },
+		{ "raw",        0, NULL, 'r' },
+		{ "range-start",1, NULL, 'S' },
+		{ "range-end",  1, NULL, 'E' },
+		{ NULL, 0, NULL, 0 },
 	};
 
 	setlocale(LC_ALL, "");	/* just to have enable UTF8 chars */
@@ -174,9 +180,9 @@ int main(int argc, char *argv[])
 
 	tb = scols_new_table();
 	if (!tb)
-		err(EXIT_FAILURE, "faild to create output table");
+		err(EXIT_FAILURE, "failed to create output table");
 
-	while((c = getopt_long(argc, argv, "cilnpr", longopts, NULL)) != -1) {
+	while((c = getopt_long(argc, argv, "ciJlnprS:E:", longopts, NULL)) != -1) {
 		switch(c) {
 		case 'c':
 			scols_table_set_column_separator(tb, ",");
@@ -185,6 +191,10 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			scols_table_enable_ascii(tb, 1);
+			break;
+		case 'J':
+			scols_table_set_name(tb, "scolstest");
+			scols_table_enable_json(tb, 1);
 			break;
 		case 'l':
 			notree = 1;
@@ -200,19 +210,40 @@ int main(int argc, char *argv[])
 			scols_table_enable_raw(tb, 1);
 			notree = 1;
 			break;
+		case 'S':
+			nstart = strtos32_or_err(optarg, "failed to parse range start") - 1;
+			break;
+		case 'E':
+			nend = strtos32_or_err(optarg, "failed to parse range end") - 1;
+			break;
 		default:
 			usage(stderr);
 		}
 	}
 
-	scols_table_enable_colors(tb, 1);
+	scols_table_enable_colors(tb, isatty(STDOUT_FILENO));
 	setup_columns(tb, notree);
 
-	while (optind < argc)
+	if (optind == argc)
+		add_lines(tb, ".");
+	else while (optind < argc)
 		add_lines(tb, argv[optind++]);
 
-	scols_print_table(tb);
-	scols_unref_table(tb);
+	if (nstart >= 0 || nend >= 0) {
+		/* print subset */
+		struct libscols_line *start = NULL, *end = NULL;
 
+		if (nstart >= 0)
+			start = scols_table_get_line(tb, nstart);
+		if (nend >= 0)
+			end = scols_table_get_line(tb, nend);
+
+		if (start || end)
+			scols_table_print_range(tb, start, end);
+	} else
+		/* print all table */
+		scols_print_table(tb);
+
+	scols_unref_table(tb);
 	return EXIT_SUCCESS;
 }
