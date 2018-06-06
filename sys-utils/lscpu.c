@@ -1251,6 +1251,52 @@ read_configured(struct lscpu_desc *desc, int idx)
 	desc->configured[idx] = path_read_s32(_PATH_SYS_CPU "/cpu%d/configure", num);
 }
 
+/* Read overall maximum frequency of cpu */
+static char *
+cpu_max_mhz(struct lscpu_desc *desc, char *buf, size_t bufsz)
+{
+	int i;
+	float cpu_freq = 0.0;
+	size_t setsize = CPU_ALLOC_SIZE(maxcpus);
+
+	if (desc->present) {
+		for (i = 0; i < desc->ncpuspos; i++) {
+			if (CPU_ISSET_S(real_cpu_num(desc, i), setsize, desc->present)
+			    && desc->maxmhz[i]) {
+				float freq = atof(desc->maxmhz[i]);
+
+				if (freq > cpu_freq)
+					cpu_freq = freq;
+			}
+		}
+	}
+	snprintf(buf, bufsz, "%.4f", cpu_freq);
+	return buf;
+}
+
+/* Read overall minimum frequency of cpu */
+static char *
+cpu_min_mhz(struct lscpu_desc *desc, char *buf, size_t bufsz)
+{
+	int i;
+	float cpu_freq = -1.0;
+	size_t setsize = CPU_ALLOC_SIZE(maxcpus);
+
+	if (desc->present) {
+		for (i = 0; i < desc->ncpuspos; i++) {
+			if (CPU_ISSET_S(real_cpu_num(desc, i), setsize, desc->present)
+			    && desc->minmhz[i]) {
+				float freq = atof(desc->minmhz[i]);
+
+				if (cpu_freq < 0.0 || freq < cpu_freq)
+					cpu_freq = freq;
+			}
+		}
+	}
+        snprintf(buf, bufsz, "%.4f", cpu_freq);
+	return buf;
+}
+
 static void
 read_max_mhz(struct lscpu_desc *desc, int idx)
 {
@@ -1898,9 +1944,9 @@ print_summary(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 	if (desc->static_mhz)
 		print_s(_("CPU static MHz:"), desc->static_mhz);
 	if (desc->maxmhz && desc->maxmhz[0])
-		print_s(_("CPU max MHz:"), desc->maxmhz[0]);
+		print_s(_("CPU max MHz:"), cpu_max_mhz(desc, buf, sizeof(buf)));
 	if (desc->minmhz && desc->minmhz[0])
-		print_s(_("CPU min MHz:"), desc->minmhz[0]);
+		print_s(_("CPU min MHz:"), cpu_min_mhz(desc, buf, sizeof(buf)));
 	if (desc->bogomips)
 		print_s(_("BogoMIPS:"), desc->bogomips);
 	if (desc->virtflag) {
