@@ -874,7 +874,7 @@ for example tune2fs -l output for extN filesystems).
 The following options apply to any filesystem that is being
 mounted (but not every filesystem actually honors them - e.g., the
 .B sync
-option today has effect only for ext2, ext3, fat, vfat and ufs):
+option today has effect only for ext2, ext3, ext4, fat, vfat and ufs):
 
 .TP
 .B async
@@ -909,7 +909,7 @@ The
 .BR context=
 option is useful when mounting filesystems that do not support
 extended attributes, such as a floppy or hard disk formatted with VFAT, or
-systems that are not normally running under SELinux, such as an ext3 formatted
+systems that are not normally running under SELinux, such as an ext3 or ext4 formatted
 disk from a non-SELinux workstation. You can also use
 .BR context=
 on filesystems you do not trust, such as a floppy. It also helps in compatibility with
@@ -2833,7 +2833,7 @@ not specified or the filesystem is known for libblkid, for example:
 .sp
 .B "mount /tmp/disk.img /mnt"
 .sp
-.B "mount -t ext3 /tmp/disk.img /mnt"
+.B "mount -t ext4 /tmp/disk.img /mnt"
 .sp
 .RE
 This type of mount knows about four options, namely
@@ -2948,7 +2948,7 @@ It is possible for a corrupted filesystem to cause a crash.
 .PP
 Some Linux filesystems don't support
 .B "\-o sync and \-o dirsync"
-(the ext2, ext3, fat and vfat filesystems
+(the ext2, ext3, ext4, fat and vfat filesystems
 .I do
 support synchronous updates (a la BSD) when mounted with the
 .B sync
