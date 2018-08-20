@@ -19,6 +19,10 @@
 # include <err.h>
 #endif
 
+#ifdef HAVE_SYS_SYSMACROS_H
+# include <sys/sysmacros.h>     /* for major, minor */
+#endif
+
 #ifndef HAVE_USLEEP
 # include <time.h>
 #endif

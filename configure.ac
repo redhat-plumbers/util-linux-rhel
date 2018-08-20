@@ -218,6 +218,7 @@ AC_CHECK_HEADERS([ \
 	sys/prctl.h \
 	sys/queue.h \
 	sys/resource.h \
+	sys/sysmacros.h \
 	sys/socket.h \
 	sys/sockio.h \
 	sys/stat.h \
