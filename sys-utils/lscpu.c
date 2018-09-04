@@ -866,6 +866,7 @@ read_hypervisor(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 				*(str--) = '\0';
 			while ((str = strstr(desc->hypervisor, "  ")))
 				memmove(str, str + 1, strlen(str));
+			break;
 		}
 		fclose(fd);
 	}
