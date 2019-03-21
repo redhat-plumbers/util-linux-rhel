@@ -31,59 +31,24 @@
 .\"
 .\"     @(#)swapon.8	6.3 (Berkeley) 3/16/91
 .\"
-.\" Sun Dec 27 12:31:30 1992: Modified by faith@cs.unc.edu
-.\" Sat Mar  6 20:46:02 1993: Modified by faith@cs.unc.edu
-.\" Sat Oct  9 09:35:30 1993: Converted to man format by faith@cs.unc.edu
-.\" Sat Nov 27 20:22:42 1993: Updated authorship information, faith@cs.unc.edu
-.\" Mon Sep 25 14:12:38 1995: Added -v and -p information
-.\" Tue Apr 30 03:32:07 1996: Added some text from A. Koppenhoefer
-.\"
-.TH SWAPON 8 "September 1995" "util-linux" "System Administration"
+.TH SWAPON 8 "October 2014" "util-linux" "System Administration"
 .SH NAME
 swapon, swapoff \- enable/disable devices and files for paging and swapping
 .SH SYNOPSIS
-Get info:
-.br
-.in +5
-.B swapon \-s
-.RB [ \-h ]
-.RB [ \-V ]
-.sp
-.in -5
-Enable/disable:
-.br
-.in +5
 .B swapon
-.RB [ \-d ]
-.RB [ \-f ]
-.RB [ \-p
-.IR priority ]
-.RB [ \-v ]
-.IR specialfile ...
+[options]
+.RI [ specialfile ...]
 .br
 .B swapoff
-.RB [ \-v ]
-.IR specialfile ...
-.sp
-.in -5
-Enable/disable all:
-.br
-.in +5
-.B swapon \-a
-.RB [ \-e ]
-.RB [ \-f ]
-.RB [ \-v ]
-.br
-.B swapoff \-a
-.RB [ \-v ]
-.in -5
+.RB [ \-va ]
+.RI [ specialfile ...]
 .SH DESCRIPTION
 .B swapon
 is used to specify devices on which paging and swapping are to take place.
 
 The device or file used is given by the
 .I specialfile
-parameter. It may be of the form
+parameter.  It may be of the form
 .BI \-L " label"
 or
 .BI \-U " uuid"
@@ -105,82 +70,85 @@ flag is given, swapping is disabled on all known swap devices and files
 or
 .IR /etc/fstab ).
 
+.SH OPTIONS
 .TP
-.B "\-a, \-\-all"
+.BR \-a , " \-\-all"
 All devices marked as ``swap'' in
 .I /etc/fstab
 are made available, except for those with the ``noauto'' option.
 Devices that are already being used as swap are silently skipped.
 .TP
-.B "\-d, \-\-discard\fR [=\fIpolicy\fR]"
+.BR \-d , " \-\-discard" [ =\fIpolicy\fR]
 Enable swap discards, if the swap backing device supports the discard or
-trim operation. This may improve performance on some Solid State Devices,
-but often it does not. The option allows one to select between two
+trim operation.  This may improve performance on some Solid State Devices,
+but often it does not.  The option allows one to select between two
 available swap discard policies:
-.BI \-\-discard=once
+.B \-\-discard=once
 to perform a single-time discard operation for the whole swap area at swapon;
 or
-.BI \-\-discard=pages
-to discard freed swap pages before they are reused, while swapping.
+.B \-\-discard=pages
+to asynchronously discard freed swap pages before they are available for reuse.
 If no policy is selected, the default behavior is to enable both discard types.
 The
 .I /etc/fstab
 mount options
-.BI discard,
-.BI discard=once,
+.BR discard ,
+.BR discard=once ,
 or
-.BI discard=pages
-may be also used to enable discard flags.
+.B discard=pages
+may also be used to enable discard flags.
 .TP
-.B "\-e, \-\-ifexists"
+.BR \-e , " \-\-ifexists"
 Silently skip devices that do not exist.
 The
 .I /etc/fstab
 mount option
-.BI nofail
-may be also used to skip non-existing device.
+.B nofail
+may also be used to skip non-existing device.
 
 .TP
-.B "\-f, \-\-fixpgsz"
-Reinitialize (exec /sbin/mkswap) the swap space if its page size does not
+.BR \-f , " \-\-fixpgsz"
+Reinitialize (exec mkswap) the swap space if its page size does not
 match that of the current running kernel.
 .BR mkswap (2)
 initializes the whole device and does not check for bad blocks.
 .TP
-.B \-h, \-\-help
-Provide help.
+.BR \-h , " \-\-help"
+Display help text and exit.
 .TP
-.B "\-L \fIlabel\fP"
+.BI \-L " label"
 Use the partition that has the specified
 .IR label .
 (For this, access to
 .I /proc/partitions
 is needed.)
 .TP
-.B "\-p, \-\-priority \fIpriority\fP"
+.BR \-p , " \-\-priority " \fIpriority\fP
 Specify the priority of the swap device.
 .I priority
 is a value between \-1 and 32767.  Higher numbers indicate
 higher priority.  See
 .BR swapon (2)
-for a full description of swap priorities. Add
+for a full description of swap priorities.  Add
 .BI pri= value
 to the option field of
 .I /etc/fstab
 for use with
 .BR "swapon -a" .
-When priority is not defined it defaults to \-1.
+When no priority is defined, it defaults to \-1.
 .TP
-.B "\-s, \-\-summary"
-Display swap usage summary by device. Equivalent to "cat /proc/swaps".
-Not available before Linux 2.1.25.
+.BR \-s , " \-\-summary"
+Display swap usage summary by device.  Equivalent to "cat /proc/swaps".
+This output format is DEPRECATED in favour
+of \fB\-\-show\fR that provides better control on output data.
 .TP
-\fB\-\-show\fR [\fIcolumn,column\fR]
-Display definable device table similar to
-.B \-\-summary
-output.  See \-\-help output for
-.I column
-list.
+.BR \-\-show [ =\fIcolumn\fR ...]
+Display a definable table of swap areas.  See the
+.B \-\-help
+output for a list of available columns.
+.TP
+.B \-\-output\-all
+Output all available columns.
 .TP
 .B \-\-noheadings
 Do not print headings when displaying
@@ -195,51 +163,65 @@ output without aligning table columns.
 .B \-\-bytes
 Display swap size in bytes in
 .B \-\-show
-output instead of user friendly size and unit.
-.B "\-U \fIuuid\fP"
+output instead of in user-friendly units.
+.TP
+.BI \-U  " uuid"
 Use the partition that has the specified
 .IR uuid .
 .TP
-.B "\-v, \-\-verbose"
+.BR \-v , " \-\-verbose"
 Be verbose.
 .TP
-.B "\-V, \-\-version"
-Display version.
+.BR \-V , " \-\-version"
+Display version information and exit.
 .SH NOTES
-You should not use
+.SS Files with holes
+The swap file implementation in the kernel expects to be able to write to the
+file directly, without the assistance of the filesystem.  This is a problem on
+files with holes or on copy-on-write files on filesystems like Btrfs.
+.sp
+Commands like
+.BR cp (1)
+or
+.BR truncate (1)
+create files with holes.  These files will be rejected by swapon.
+.sp
+Preallocated files created by
+.BR fallocate (1)
+may be interpreted as files with holes too depending of the filesystem.
+Preallocated swap files are supported on XFS since Linux 4.18.
+.sp
+The most portable solution to create a swap file is to use
+.BR dd (1)
+and /dev/zero.
+.SS Btrfs
+Swap files on Btrfs are supported since Linux 5.0 on files with nocow attribute.
+See the
+.BR btrfs (5)
+manual page for more details.
+.SS NFS
+Swap over \fBNFS\fR may not work.
+.SS Suspend
 .B swapon
-on a file with holes.
-Swap over NFS may not work.
-.PP
-.B swapon
-automatically detects and rewrites swap space signature with old software
-suspend data (e.g S1SUSPEND, S2SUSPEND, ...). The problem is that if we don't
+automatically detects and rewrites a swap space signature with old software
+suspend data (e.g. S1SUSPEND, S2SUSPEND, ...). The problem is that if we don't
 do it, then we get data corruption the next time an attempt at unsuspending is
 made.
-.PP
-.B swapon
-may not work correctly when using a swap file with some versions of btrfs.
-This is due to the swap file implementation in the kernel expecting to be able
-to write to the file directly, without the assistance of the file system.
-Since btrfs is a copy-on-write file system, the file location may not be
-static and corruption can result. Btrfs actively disallows the use of files
-on its file systems by refusing to map the file. This can be seen in the system
-log as "swapon: swapfile has holes." One possible workaround is to map the
-file to a loopback device. This will allow the file system to determine the
-mapping properly but may come with a performance impact.
-
 .SH ENVIRONMENT
-.IP LIBMOUNT_DEBUG=0xffff
-enables debug output.
+.IP LIBMOUNT_DEBUG=all
+enables libmount debug output.
+.IP LIBBLKID_DEBUG=all
+enables libblkid debug output.
 
 .SH SEE ALSO
-.BR swapon (2),
 .BR swapoff (2),
+.BR swapon (2),
 .BR fstab (5),
 .BR init (8),
+.BR fallocate (1),
 .BR mkswap (8),
-.BR rc (8),
-.BR mount (8)
+.BR mount (8),
+.BR rc (8)
 .SH FILES
 .br
 .I /dev/sd??
@@ -253,4 +235,4 @@ The
 command appeared in 4.0BSD.
 .SH AVAILABILITY
 The swapon command is part of the util-linux package and is available from
-ftp://ftp.kernel.org/pub/linux/utils/util-linux/.
+https://www.kernel.org/pub/linux/utils/util-linux/.
