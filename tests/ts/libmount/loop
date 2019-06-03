@@ -65,6 +65,7 @@ ts_finalize_subtest
 ts_init_subtest "file-o-loop"
 [ -d "$TS_MOUNTPOINT" ] || mkdir -p $TS_MOUNTPOINT
 $TS_CMD_MOUNT -oloop "$BACKFILE" "$TS_MOUNTPOINT" >> $TS_OUTPUT 2>&1
+udevadm settle
 $TS_CMD_UMOUNT "$TS_MOUNTPOINT" >> $TS_OUTPUT 2>&1
 udevadm settle
 ts_log "Success"
@@ -89,6 +90,7 @@ else
 	[ -d "$TS_MOUNTPOINT" ] || mkdir -p $TS_MOUNTPOINT
 	LODEV=$( $TS_CMD_LOSETUP --find 2>> $TS_OUTPUT )
 	$TS_CMD_MOUNT -oloop=$LODEV "$BACKFILE" "$TS_MOUNTPOINT" >> $TS_OUTPUT 2>&1
+	udevadm settle
 	verify_mount_dev "$LODEV" "$TS_MOUNTPOINT" >> $TS_OUTPUT 2>&1
 	$TS_CMD_UMOUNT "$TS_MOUNTPOINT" >> $TS_OUTPUT 2>&1
 	udevadm settle
@@ -122,6 +124,7 @@ ts_init_subtest "o-loop-val-initialized"
 LODEV=$( $TS_CMD_LOSETUP --show -f "$BACKFILE" 2>>$TS_OUTPUT)
 $TS_CMD_MOUNT -oloop=$LODEV "$BACKFILE" "$TS_MOUNTPOINT" 2>&1 \
        | sed 's/:.*:/: <target>/; s/for .*/for <source>/' > $TS_OUTPUT
+udevadm settle
 $TS_CMD_LOSETUP --detach $LODEV >> $TS_OUTPUT 2>&1
 udevadm settle
 ts_log "Success"
@@ -133,6 +136,7 @@ cp "$BACKFILE" "$BACKFILE"-2
 LODEV=$( $TS_CMD_LOSETUP --show -f "$BACKFILE"-2 2>> $TS_OUTPUT)
 $TS_CMD_MOUNT -oloop=$LODEV "$BACKFILE" "$TS_MOUNTPOINT" 2>&1 \
 	| sed 's/:.*:/: <target>/; s/for .*/for <source>/' > $TS_OUTPUT
+udevadm settle
 $TS_CMD_LOSETUP --detach $LODEV >> $TS_OUTPUT 2>&1
 rm "$BACKFILE"-2
 udevadm settle
