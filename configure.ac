@@ -360,6 +360,14 @@ AC_CHECK_FUNCS([openat fstatat unlinkat], [have_openat=yes], [have_openat=no])
 AC_CHECK_FUNCS([ioperm iopl], [have_io=yes])
 AC_CHECK_FUNCS([open_memstream], [have_open_memstream=yes],[have_open_memstream=no])
 
+
+AC_CHECK_LIB([rtas], [rtas_get_sysparm], [
+        RTAS_LIBS="-lrtas"
+        AC_DEFINE_UNQUOTED([HAVE_LIBRTAS], [1], [Define if librtas exists]), [],
+])
+AC_SUBST([RTAS_LIBS])
+
+
 AC_CHECK_MEMBER(struct sockaddr.sa_len,
 		AC_DEFINE_UNQUOTED(HAVE_SA_LEN,1,[Define if struct sockaddr contains sa_len]),,
 	[#include <sys/types.h>
