@@ -95,7 +95,7 @@ static const struct colinfo infos[] = {
 };
 
 static int columns[ARRAY_SIZE(infos) * 2];
-static size_t ncolumns;
+static int ncolumns;
 
 enum {
 	LSNS_ID_MNT = 0,
@@ -193,7 +193,7 @@ static int column_name_to_id(const char *name, size_t namesz)
 static inline int get_column_id(int num)
 {
 	assert(num >= 0);
-	assert((size_t) num < ncolumns);
+	assert(num < ncolumns);
 	assert(columns[num] < (int) ARRAY_SIZE(infos));
 
 	return columns[num];
@@ -444,7 +444,7 @@ static int read_namespaces(struct lsns *ls)
 static void add_scols_line(struct lsns *ls, struct libscols_table *table,
 			   struct lsns_namespace *ns, struct lsns_process *proc)
 {
-	size_t i;
+	int i;
 	struct libscols_line *line;
 
 	assert(ns);
@@ -504,7 +504,7 @@ static void add_scols_line(struct lsns *ls, struct libscols_table *table,
 static struct libscols_table *init_scols_table(struct lsns *ls)
 {
 	struct libscols_table *tab;
-	size_t i;
+	int i;
 
 	tab = scols_new_table();
 	if (!tab) {
@@ -745,7 +745,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (outarg && string_add_to_idarray(outarg, columns, ARRAY_SIZE(columns),
-					(int *) &ncolumns, column_name_to_id) < 0)
+					&ncolumns, column_name_to_id) < 0)
 		return EXIT_FAILURE;
 
 	scols_init_debug(0);
