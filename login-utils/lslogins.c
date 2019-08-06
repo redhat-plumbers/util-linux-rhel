@@ -438,8 +438,8 @@ static struct utmp *get_last_wtmp(struct lslogins_control *ctl, const char *user
 
 static int require_wtmp(void)
 {
-	size_t i;
-	for (i = 0; i < (size_t) ncolumns; i++)
+	int i;
+	for (i = 0; i < ncolumns; i++)
 		if (is_wtmp_col(columns[i]))
 			return 1;
 	return 0;
@@ -447,8 +447,8 @@ static int require_wtmp(void)
 
 static int require_btmp(void)
 {
-	size_t i;
-	for (i = 0; i < (size_t) ncolumns; i++)
+	int i;
+	for (i = 0; i < ncolumns; i++)
 		if (is_btmp_col(columns[i]))
 			return 1;
 	return 0;

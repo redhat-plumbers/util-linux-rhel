@@ -194,7 +194,7 @@ static const struct lsipc_coldesc coldescs[] =
  * column twice. That's enough, dynamically allocated array of the columns is
  * unnecessary overkill and over-engineering in this case */
 static int columns[ARRAY_SIZE(coldescs) * 2];
-static size_t ncolumns;
+static int ncolumns;
 
 static inline size_t err_columns_index(size_t arysz, size_t idx)
 {
@@ -358,7 +358,7 @@ static struct libscols_table *new_table(struct lsipc_control *ctl)
 static struct libscols_table *setup_table(struct lsipc_control *ctl)
 {
 	struct libscols_table *table = new_table(ctl);
-	size_t n;
+	int n;
 
 	for (n = 0; n < ncolumns; n++) {
 		int flags = coldescs[columns[n]].flag;
@@ -473,7 +473,7 @@ static void global_set_data(struct libscols_table *tb, const char *resource,
 			    const char *desc, uintmax_t used, uintmax_t limit, int usage)
 {
 	struct libscols_line *ln;
-	size_t n;
+	int n;
 
 	ln = scols_table_new_line(tb, NULL);
 	if (!ln)
@@ -545,7 +545,7 @@ static void do_sem(int id, struct lsipc_control *ctl, struct libscols_table *tb)
 		return;
 	}
 	for (semdsp = semds;  semdsp->next != NULL || id > -1; semdsp = semdsp->next) {
-		size_t n;
+		int n;
 		ln = scols_table_new_line(tb, NULL);
 
 		for (n = 0; n < ncolumns; n++) {
@@ -732,7 +732,7 @@ static void do_msg(int id, struct lsipc_control *ctl, struct libscols_table *tb)
 	}
 
 	for (msgdsp = msgds; msgdsp->next != NULL || id > -1 ; msgdsp = msgdsp->next) {
-		size_t n;
+		int n;
 		ln = scols_table_new_line(tb, NULL);
 
 		/* no need to call getpwuid() for the same user */
@@ -888,7 +888,7 @@ static void do_shm(int id, struct lsipc_control *ctl, struct libscols_table *tb)
 	}
 
 	for (shmdsp = shmds; shmdsp->next != NULL || id > -1 ; shmdsp = shmdsp->next) {
-		size_t n;
+		int n;
 		ln = scols_table_new_line(tb, NULL);
 		if (!ln)
 			err_oom();
@@ -1073,7 +1073,7 @@ int main(int argc, char *argv[])
 {
 	int opt, msg = 0, sem = 0, shm = 0, id = -1;
 	int show_time = 0, show_creat = 0, global = 0;
-	size_t i;
+	int i;
 	struct lsipc_control *ctl = xcalloc(1, sizeof(struct lsipc_control));
 	static struct libscols_table *tb;
 	char *outarg = NULL;
@@ -1248,7 +1248,7 @@ int main(int argc, char *argv[])
 
 	if (ctl->outmode == OUT_PRETTY && !(optarg || show_creat || show_time)) {
 		/* all columns for lsipc --<RESOURCE> --id <ID> */
-		for (ncolumns = 0, i = 0; i < ARRAY_SIZE(coldescs); i++)
+		for (ncolumns = 0, i = 0; i < (int) ARRAY_SIZE(coldescs); i++)
 			 columns[ncolumns++] = i;
 	} else {
 		if (show_creat) {
@@ -1264,7 +1264,7 @@ int main(int argc, char *argv[])
 		}
 		if (shm && show_time) {
 			/* keep "COMMAND" as last column */
-			size_t cmd = columns[ncolumns - 1] == COL_COMMAND;
+			int cmd = columns[ncolumns - 1] == COL_COMMAND;
 
 			if (cmd)
 				ncolumns--;
@@ -1280,7 +1280,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (outarg && string_add_to_idarray(outarg, columns, ARRAY_SIZE(columns),
-					 (int *) &ncolumns, column_name_to_id) < 0)
+					&ncolumns, column_name_to_id) < 0)
 		return EXIT_FAILURE;
 
 	tb = setup_table(ctl);

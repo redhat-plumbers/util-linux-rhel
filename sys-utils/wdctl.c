@@ -238,7 +238,7 @@ static void add_flag_line(struct tt *tt, struct wdinfo *wd, const struct wdflag 
 
 static int show_flags(struct wdinfo *wd, int tt_flags, uint32_t wanted)
 {
-	size_t i;
+	int i;
 	int rc = -1;
 	struct tt *tt;
 	uint32_t flags;
@@ -251,7 +251,7 @@ static int show_flags(struct wdinfo *wd, int tt_flags, uint32_t wanted)
 	}
 
 	/* define columns */
-	for (i = 0; i < (size_t) ncolumns; i++) {
+	for (i = 0; i < ncolumns; i++) {
 		struct colinfo *col = get_column_info(i);
 
 		if (!tt_define_column(tt, col->name, col->whint, col->flags)) {
@@ -264,7 +264,7 @@ static int show_flags(struct wdinfo *wd, int tt_flags, uint32_t wanted)
 	 * -- one line for each supported flag (option)	 */
 	flags = wd->ident.options;
 
-	for (i = 0; i < ARRAY_SIZE(wdflags); i++) {
+	for (i = 0; i < (int) ARRAY_SIZE(wdflags); i++) {
 		if (wanted && !(wanted & wdflags[i].flag))
 			; /* ignore */
 		else if (flags & wdflags[i].flag)
@@ -513,6 +513,7 @@ int main(int argc, char *argv[])
 			return EXIT_SUCCESS;
 		case 'h':
 			usage(stdout);
+			/* fallthrough */
 		case 'F':
 			noflags = 1;
 			break;

@@ -138,7 +138,7 @@ static struct coldesc coldescs[] = {
  * column twice. That's enough, dynamically allocated array of the columns is
  * unnecessary overkill and over-engineering in this case */
 static int columns[ARRAY_SIZE(coldescs) * 2];
-static size_t ncolumns;
+static int ncolumns;
 
 static inline size_t err_columns_index(size_t arysz, size_t idx)
 {
@@ -183,7 +183,7 @@ static int column_name_to_id(const char *name, size_t namesz)
 static inline int get_column_id(int num)
 {
 	assert(num >= 0);
-	assert((size_t) num < ncolumns);
+	assert(num < ncolumns);
 	assert(columns[num] < (int) ARRAY_SIZE(coldescs));
 
 	return columns[num];
@@ -230,7 +230,7 @@ static void set_split_policy(struct lsmem *l, int cols[], size_t ncols)
 
 static void add_scols_line(struct lsmem *lsmem, struct memory_block *blk)
 {
-	size_t i;
+	int i;
 	struct libscols_line *line;
 
 	line = scols_table_new_line(lsmem->table, NULL);
@@ -523,8 +523,7 @@ int main(int argc, char **argv)
 		}, *lsmem = &_lsmem;
 
 	const char *outarg = NULL, *splitarg = NULL;
-	int c;
-	size_t i;
+	int c, i;
 
 	enum {
 		LSMEM_OPT_SUMARRY = CHAR_MAX + 1
@@ -640,7 +639,7 @@ int main(int argc, char **argv)
 	}
 
 	if (outarg && string_add_to_idarray(outarg, columns, ARRAY_SIZE(columns),
-					 (int *) &ncolumns, column_name_to_id) < 0)
+					&ncolumns, column_name_to_id) < 0)
 		return EXIT_FAILURE;
 
 	/*

@@ -392,7 +392,7 @@ static void fill_table_row(struct libscols_table *tb, struct zram *z)
 {
 	static struct libscols_line *ln;
 	struct sysfs_cxt *sysfs;
-	size_t i;
+	int i;
 	uint64_t num;
 
 	assert(tb);
@@ -408,7 +408,7 @@ static void fill_table_row(struct libscols_table *tb, struct zram *z)
 	if (!ln)
 		err(EXIT_FAILURE, _("failed to initialize output line"));
 
-	for (i = 0; i < (size_t) ncolumns; i++) {
+	for (i = 0; i < ncolumns; i++) {
 		char *str = NULL;
 
 		switch (get_column_id(i)) {
@@ -479,7 +479,7 @@ static void fill_table_row(struct libscols_table *tb, struct zram *z)
 static void status(struct zram *z)
 {
 	struct libscols_table *tb;
-	size_t i;
+	int i;
 
 	scols_init_debug(0);
 
@@ -490,7 +490,7 @@ static void status(struct zram *z)
 	scols_table_enable_raw(tb, raw);
 	scols_table_enable_noheadings(tb, no_headings);
 
-	for (i = 0; i < (size_t) ncolumns; i++) {
+	for (i = 0; i < ncolumns; i++) {
 		const struct colinfo *col = get_column_info(i);
 
 		if (!scols_table_new_column(tb, col->name, col->whint, col->flags))
