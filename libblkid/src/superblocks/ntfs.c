@@ -206,6 +206,8 @@ static int probe_ntfs(blkid_probe pr, const struct blkid_idmag *mag)
 		attr_off += attr_len;
 	}
 
+	blkid_probe_set_block_size(pr, sector_size);
+
 	blkid_probe_sprintf_uuid(pr,
 			(unsigned char *) &ns->volume_serial,
 			sizeof(ns->volume_serial),

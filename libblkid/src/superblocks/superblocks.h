@@ -106,6 +106,8 @@ extern int blkid_probe_set_id_label(blkid_probe pr, const char *name,
 extern int blkid_probe_set_utf8_id_label(blkid_probe pr, const char *name,
 			     unsigned char *data, size_t len, int enc);
 
+int blkid_probe_set_block_size(blkid_probe pr, unsigned block_size);
+
 extern int blkid_probe_is_bitlocker(blkid_probe pr);
 
 #endif /* _BLKID_SUPERBLOCKS_H */
