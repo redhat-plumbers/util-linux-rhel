@@ -567,8 +567,14 @@ static int get_udev_properties(struct blkdev_cxt *cxt)
 		if (data)
 			cxt->wwn = xstrdup(data);
 
-		if ((data = udev_device_get_property_value(dev, "ID_SERIAL_SHORT")))
+		data = udev_device_get_property_value(dev, "ID_SCSI_SERIAL");
+		if (!data)
+			data = udev_device_get_property_value(dev, "ID_SERIAL_SHORT");
+		if (!data)
+			data = udev_device_get_property_value(dev, "ID_SERIAL");
+		if (data)
 			cxt->serial = xstrdup(data);
+
 		udev_device_unref(dev);
 		cxt->probed = 1;
 		DBG(DEV, ul_debugobj(cxt, "%s: found udev properties", cxt->name));
