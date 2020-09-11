@@ -186,6 +186,7 @@ struct lscpu_modifier {
 };
 
 extern int read_hypervisor_dmi(void);
+extern int get_number_of_physical_sockets_from_dmi(void);
 extern void arm_cpu_decode(struct lscpu_desc *desc);
 
 #endif /* LSCPU_H */
