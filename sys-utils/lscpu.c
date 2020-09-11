@@ -1850,8 +1850,10 @@ print_summary(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 			}
 		} else {
 			if (desc->is_cluster) {
-				if (desc->nr_socket_on_cluster > 0)
-					add_summary_n(tb, _("Socket(s):"), desc->nr_socket_on_cluster);
+				int sockets = get_number_of_physical_sockets_from_dmi();
+
+				if (sockets > 0)
+					add_summary_n(tb, _("Socket(s):"), sockets);
 				else
 					add_summary_s(tb, _("Socket(s):"), "-");
 
