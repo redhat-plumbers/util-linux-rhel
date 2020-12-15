@@ -158,6 +158,9 @@ struct lscpu_desc {
 	int		physsockets;	/* Physical sockets (modules) */
 	int		physchips;	/* Physical chips */
 	int		physcoresperchip;	/* Physical cores per chip */
+
+	int		is_cluster;
+	int		nr_socket_on_cluster;
 };
 
 enum {

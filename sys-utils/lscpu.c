@@ -70,6 +70,7 @@
 #define _PATH_SYS_HYP_FEATURES "/sys/hypervisor/properties/features"
 #define _PATH_SYS_CPU		_PATH_SYS_SYSTEM "/cpu"
 #define _PATH_SYS_NODE		_PATH_SYS_SYSTEM "/node"
+#define _PATH_ACPI_PPTT		"/sys/firmware/acpi/tables/PPTT"
 #define _PATH_PROC_XEN		"/proc/xen"
 #define _PATH_PROC_XENCAP	_PATH_PROC_XEN "/capabilities"
 #define _PATH_PROC_CPUINFO	"/proc/cpuinfo"
@@ -168,6 +169,7 @@ enum {
 	COL_CPU,
 	COL_CORE,
 	COL_SOCKET,
+	COL_CLUSTER,
 	COL_NODE,
 	COL_BOOK,
 	COL_DRAWER,
@@ -194,6 +196,7 @@ static struct lscpu_coldesc coldescs[] =
 	[COL_CPU]          = { "CPU", N_("logical CPU number"), 1 },
 	[COL_CORE]         = { "CORE", N_("logical core number") },
 	[COL_SOCKET]       = { "SOCKET", N_("logical socket number") },
+	[COL_CLUSTER]      = { "CLUSTER", N_("logical cluster number") },
 	[COL_NODE]         = { "NODE", N_("logical NUMA node number") },
 	[COL_BOOK]         = { "BOOK", N_("logical book number") },
 	[COL_DRAWER]       = { "DRAWER", N_("logical drawer number") },
@@ -382,6 +385,26 @@ static void read_physical_info_powerpc(
 {
 }
 #endif
+
+static int is_fallback_to_cluster(struct lscpu_desc *desc)
+{
+	char *arch;
+	struct stat st;
+	struct utsname utsbuf;
+
+	if (desc)
+		arch = desc->arch;
+	else {
+		if (uname(&utsbuf) == -1)
+			err(EXIT_FAILURE, _("error: uname failed"));
+		arch = utsbuf.machine;
+	}
+
+	if (!(strcmp(arch, "aarch64")) && (stat(_PATH_ACPI_PPTT, &st) < 0))
+		return 1;
+	else
+		return 0;
+}
 
 
 static void
@@ -1344,6 +1367,10 @@ get_cell_data(struct lscpu_desc *desc, int idx, int col,
 				snprintf(buf, bufsz, "%zu", i);
 		}
 		break;
+	case COL_CLUSTER:
+		if (!desc->is_cluster)
+			break;
+		/* fallthrough */
 	case COL_SOCKET:
 		if (mod->physical) {
 			if (desc->socketids[idx] ==  -1)
@@ -1799,12 +1826,18 @@ print_summary(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 			if (fd)
 				fclose(fd);
 		}
+
+
 		if (desc->mtid)
 			threads_per_core = atoi(desc->mtid) + 1;
 		add_summary_n(tb, _("Thread(s) per core:"),
 			threads_per_core ?: desc->nthreads / desc->ncores);
-		add_summary_n(tb, _("Core(s) per socket:"),
-			cores_per_socket ?: desc->ncores / desc->nsockets);
+		if (desc->is_cluster)
+			add_summary_n(tb, _("Core(s) per cluster:"),
+				cores_per_socket ?: desc->ncores / desc->nsockets);
+		else
+			add_summary_n(tb, _("Core(s) per socket:"),
+				cores_per_socket ?: desc->ncores / desc->nsockets);
 		if (desc->nbooks) {
 			add_summary_n(tb, _("Socket(s) per book:"),
 				sockets_per_book ?: desc->nsockets / desc->nbooks);
@@ -1816,7 +1849,17 @@ print_summary(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 				add_summary_n(tb, _("Book(s):"), books_per_drawer ?: desc->nbooks);
 			}
 		} else {
-			add_summary_n(tb, _("Socket(s):"), sockets_per_book ?: desc->nsockets);
+			if (desc->is_cluster) {
+				if (desc->nr_socket_on_cluster > 0)
+					add_summary_n(tb, _("Socket(s):"), desc->nr_socket_on_cluster);
+				else
+					add_summary_s(tb, _("Socket(s):"), "-");
+
+				add_summary_n(tb, _("Cluster(s):"),
+						sockets_per_book ?: desc->nsockets);
+			} else
+				add_summary_n(tb, _("Socket(s):"),
+						sockets_per_book ?: desc->nsockets);
 		}
 	}
 	if (desc->nnodes)
@@ -2060,9 +2103,12 @@ int main(int argc, char *argv[])
 		qsort(desc->ecaches, desc->necaches,
 				sizeof(struct cpu_cache), cachecmp);
 
+	desc->is_cluster = is_fallback_to_cluster(desc);
+
 	read_nodes(desc);
 	read_hypervisor(desc, mod);
 	arm_cpu_decode(desc);
+
 
 	switch(mod->mode) {
 	case OUTPUT_SUMMARY:
@@ -2072,7 +2118,10 @@ int main(int argc, char *argv[])
 		if (!ncolumns) {
 			columns[ncolumns++] = COL_CPU;
 			columns[ncolumns++] = COL_CORE;
-			columns[ncolumns++] = COL_SOCKET;
+			if (desc->is_cluster)
+				columns[ncolumns++] = COL_CLUSTER;
+			else
+				columns[ncolumns++] = COL_SOCKET;
 			columns[ncolumns++] = COL_NODE;
 			columns[ncolumns++] = COL_CACHE;
 			mod->compat = 1;
@@ -2089,8 +2138,12 @@ int main(int argc, char *argv[])
 				columns[ncolumns++] = COL_DRAWER;
 			if (desc->bookmaps)
 				columns[ncolumns++] = COL_BOOK;
-			if (desc->socketmaps)
-				columns[ncolumns++] = COL_SOCKET;
+			if (desc->socketmaps) {
+				if (desc->is_cluster)
+					columns[ncolumns++] = COL_CLUSTER;
+				else
+					columns[ncolumns++] = COL_SOCKET;
+			}
 			if (desc->coremaps)
 				columns[ncolumns++] = COL_CORE;
 			if (desc->caches)
