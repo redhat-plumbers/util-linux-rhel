@@ -49,7 +49,7 @@ static const struct id_part arm_part[] = {
     { 0xc07, "Cortex-A7" },
     { 0xc08, "Cortex-A8" },
     { 0xc09, "Cortex-A9" },
-    { 0xc0d, "Cortex-A12" },
+    { 0xc0d, "Cortex-A17" },	/* Originally A12 */
     { 0xc0f, "Cortex-A15" },
     { 0xc0e, "Cortex-A17" },
     { 0xc14, "Cortex-R4" },
@@ -60,19 +60,28 @@ static const struct id_part arm_part[] = {
     { 0xc21, "Cortex-M1" },
     { 0xc23, "Cortex-M3" },
     { 0xc24, "Cortex-M4" },
-    { 0xc20, "Cortex-M7" },
+    { 0xc27, "Cortex-M7" },
     { 0xc60, "Cortex-M0+" },
     { 0xd01, "Cortex-A32" },
     { 0xd03, "Cortex-A53" },
     { 0xd04, "Cortex-A35" },
     { 0xd05, "Cortex-A55" },
+    { 0xd06, "Cortex-A65" },
     { 0xd07, "Cortex-A57" },
     { 0xd08, "Cortex-A72" },
     { 0xd09, "Cortex-A73" },
     { 0xd0a, "Cortex-A75" },
+    { 0xd0b, "Cortex-A76" },
+    { 0xd0c, "Neoverse-N1" },
+    { 0xd0d, "Cortex-A77" },
+    { 0xd0e, "Cortex-A76AE" },
     { 0xd13, "Cortex-R52" },
     { 0xd20, "Cortex-M23" },
     { 0xd21, "Cortex-M33" },
+    { 0xd41, "Cortex-A78" },
+    { 0xd42, "Cortex-A78AE" },
+    { 0xd4a, "Neoverse-E1" },
+    { 0xd4b, "Cortex-A78C" },
     { -1, "unknown" },
 };
 
@@ -126,6 +135,7 @@ static const struct id_part samsung_part[] = {
 static const struct id_part nvidia_part[] = {
     { 0x000, "Denver" },
     { 0x003, "Denver 2" },
+    { 0x004, "Carmel" },
     { -1, "unknown" },
 };
 
@@ -167,6 +177,16 @@ static const struct id_part intel_part[] = {
     { -1, "unknown" },
 };
 
+static const struct id_part fujitsu_part[] = {
+    { 0x001, "A64FX" },
+    { -1, "unknown" },
+};
+
+static const struct id_part hisi_part[] = {
+    { 0xd01, "Kunpeng-920" },	/* aka tsv110 */
+    { -1, "unknown" },
+};
+
 static const struct id_part unknown_part[] = {
     { -1, "unknown" },
 };
@@ -182,6 +202,8 @@ static const struct hw_impl hw_implementer[] = {
     { 0x42, brcm_part,    "Broadcom" },
     { 0x43, cavium_part,  "Cavium" },
     { 0x44, dec_part,     "DEC" },
+    { 0x46, fujitsu_part, "FUJITSU" },
+    { 0x48, hisi_part,    "HiSilicon" },
     { 0x4e, nvidia_part,  "Nvidia" },
     { 0x50, apm_part,     "APM" },
     { 0x51, qcom_part,    "Qualcomm" },
@@ -191,7 +213,6 @@ static const struct hw_impl hw_implementer[] = {
     { 0x69, intel_part,   "Intel" },
     { -1,   unknown_part, "unknown" },
 };
-
 void arm_cpu_decode(struct lscpu_desc *desc)
 {
 	int j, impl, part;
