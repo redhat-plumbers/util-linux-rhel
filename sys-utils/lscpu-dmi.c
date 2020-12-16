@@ -28,6 +28,7 @@
 #include <stdio.h>
 
 #include "lscpu.h"
+#include "all-io.h"
 
 #define _PATH_SYS_DMI	 "/sys/firmware/dmi/tables/DMI"
 
@@ -352,4 +353,47 @@ int get_number_of_physical_sockets_from_dmi(void)
 		return rc;
 	else
 		return di.sockets;
+}
+
+
+#define _PATH_SYS_DMI_TYPE4   "/sys/firmware/dmi/entries/4-0/raw"
+#define PROC_MFR_OFFSET		0x07
+#define PROC_VERSION_OFFSET	0x10
+
+/*
+ * Use firmware to get human readable names
+ */
+int arm_smbios_decode(struct lscpu_desc *desc)
+{
+	uint8_t data[8192];
+	char buf[128], *str;
+	struct dmi_header h;
+	int fd;
+	ssize_t rs;
+
+	fd = open(_PATH_SYS_DMI_TYPE4, O_RDONLY);
+	if (fd < 0)
+		return fd;
+
+	rs = read_all(fd, (char *) data, 8192);
+	close(fd);
+
+	if (rs == -1)
+		return -1;
+
+	to_dmi_header(&h, data);
+
+	str = dmi_string(&h, data[PROC_MFR_OFFSET]);
+	if (str) {
+		xstrncpy(buf, str, 127);
+		desc->bios_vendor = xstrdup(buf);
+	}
+
+	str = dmi_string(&h, data[PROC_VERSION_OFFSET]);
+	if (str) {
+		xstrncpy(buf, str, 127);
+		desc->bios_modelname = xstrdup(buf);
+	}
+
+	return 0;
 }

@@ -1868,6 +1868,8 @@ print_summary(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 		add_summary_n(tb, _("NUMA node(s):"), desc->nnodes);
 	if (desc->vendor)
 		add_summary_s(tb, _("Vendor ID:"), desc->vendor);
+	if (desc->bios_vendor)
+		add_summary_s(tb, _("BIOS Vendor ID:"), desc->bios_vendor);
 	if (desc->machinetype)
 		add_summary_s(tb, _("Machine type:"), desc->machinetype);
 	if (desc->family)
@@ -1876,6 +1878,8 @@ print_summary(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 		add_summary_s(tb, _("Model:"), desc->revision ? desc->revision : desc->model);
 	if (desc->modelname || desc->cpu)
 		add_summary_s(tb, _("Model name:"), desc->cpu ? desc->cpu : desc->modelname);
+	if (desc->bios_modelname)
+		add_summary_s(tb, _("BIOS Model name:"), desc->bios_modelname);
 	if (desc->stepping)
 		add_summary_s(tb, _("Stepping:"), desc->stepping);
 	if (desc->mhz)
@@ -2109,6 +2113,9 @@ int main(int argc, char *argv[])
 
 	read_nodes(desc);
 	read_hypervisor(desc, mod);
+
+	if (mod->system == SYSTEM_LIVE)
+		arm_smbios_decode(desc);
 	arm_cpu_decode(desc);
 
 

@@ -79,10 +79,12 @@ struct polarization_modes {
 struct lscpu_desc {
 	char	*arch;
 	char	*vendor;
+	char	*bios_vendor;	/* aarch64 */
 	char	*machinetype;	/* s390 */
 	char	*family;
 	char	*model;
 	char	*modelname;
+	char	*bios_modelname; /* aarch64 */
 	char	*revision;  /* alternative for model (ppc) */
 	char	*cpu;       /* alternative for modelname (ppc, sparc) */
 	char	*virtflag;	/* virtualization flag (vmx, svm) */
@@ -187,5 +189,6 @@ struct lscpu_modifier {
 extern int read_hypervisor_dmi(void);
 extern int get_number_of_physical_sockets_from_dmi(void);
 extern void arm_cpu_decode(struct lscpu_desc *desc);
+extern int arm_smbios_decode(struct lscpu_desc *desc);
 
 #endif /* LSCPU_H */
