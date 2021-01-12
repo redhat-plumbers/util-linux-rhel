@@ -249,6 +249,12 @@ It's possible to specify source (device) or target (mountpoint) to filter mount 
 .TP
 .BR "\-\-verbose"
 Force findmnt to print more information (\fB\-\-verify\fP only for now).
+.TP
+.B \-\-vfs-all
+When used with
+.BR VFS-OPTIONS
+column, print all VFS (fs-independent) flags.  This option is designed for auditing purposes to
+list also default VFS kernel mount options which are normally not listed.
 .SH EXAMPLES
 .IP "\fBfindmnt \-\-fstab \-t nfs\fP"
 Prints all NFS filesystems defined in

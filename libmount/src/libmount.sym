@@ -322,3 +322,7 @@ MOUNT_2.30 {
 	mnt_context_enable_rwonly_mount;
 	mnt_context_get_excode;
 } MOUNT_2.28;
+
+MOUNT_2_37 {
+	mnt_fs_get_vfs_options_all;
+} MOUNT_2.30;

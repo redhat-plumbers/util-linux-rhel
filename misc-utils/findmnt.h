@@ -19,6 +19,8 @@ enum {
 	FL_STRICTTARGET = (1 << 15),
 	FL_VERBOSE	= (1 << 16),
 
+	FL_VFS_ALL	= (1 << 19),
+
 	/* basic table settings */
 	FL_ASCII	= (1 << 20),
 	FL_RAW		= (1 << 21),
