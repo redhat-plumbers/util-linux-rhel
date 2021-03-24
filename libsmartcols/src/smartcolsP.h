@@ -160,6 +160,9 @@ struct libscols_table {
 
 	struct list_head	tb_columns;
 	struct list_head	tb_lines;
+
+	struct libscols_column	*dflt_sort_column;	/* default sort column, set by scols_sort_table() */
+
 	struct libscols_symbols	*symbols;
 	struct libscols_cell	title;		/* optional table title (for humans) */
 

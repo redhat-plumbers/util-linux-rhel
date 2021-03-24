@@ -585,11 +585,9 @@ static int cell_to_buffer(struct libscols_table *tb,
 
 	ce = scols_line_get_cell(ln, cl->seqnum);
 	data = ce ? scols_cell_get_data(ce) : NULL;
-	if (!data)
-		return 0;
 
 	if (!scols_column_is_tree(cl))
-		return buffer_set_data(buf, data);
+		return data ? buffer_set_data(buf, data) : 0;
 
 	/*
 	 * Tree stuff
@@ -605,7 +603,7 @@ static int cell_to_buffer(struct libscols_table *tb,
 			buffer_set_art_index(buf);
 	}
 
-	if (!rc)
+	if (!rc && data)
 		rc = buffer_append_data(buf, data);
 	return rc;
 }

@@ -1894,9 +1894,11 @@ int main(int argc, char *argv[])
 		 * /sys is no more sorted */
 		lsblk->sort_id = COL_MAJMIN;
 
-	/* For --inverse --list we still follow parent->child relation */
-	if (lsblk->inverse && !(lsblk->flags & LSBLK_TREE))
+	/* For --{inverse,raw,pairs} --list we still follow parent->child relation */
+	if (!(lsblk->flags & LSBLK_TREE)
+	    && (lsblk->inverse || lsblk->flags & LSBLK_EXPORT || lsblk->flags & LSBLK_RAW))
 		lsblk->force_tree_order = 1;
+
 
 	if (lsblk->sort_id >= 0 && column_id_to_number(lsblk->sort_id) < 0) {
 		/* the sort column is not between output columns -- add as hidden */
