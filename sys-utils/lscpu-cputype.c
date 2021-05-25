@@ -6,9 +6,24 @@
 # include <librtas.h>
 #endif
 
+#include <locale.h>
 #include "lscpu.h"
 
 #include "fileutils.h"
+
+/* Simplified backport from upstrem to RHEL */
+static volatile locale_t c_locale;
+
+static double c_strtod(char const *str, char **end)
+{
+	if (!c_locale)
+		c_locale = newlocale(LC_ALL_MASK, "C", (locale_t) 0);
+	if (c_locale)
+		return strtod_l(str, end, c_locale);
+
+	return strtod(str, end);
+}
+
 
 /* Lookup a pattern and get the value for format  "<pattern> : <key>"
  */
@@ -532,7 +547,7 @@ int lscpu_read_cpuinfo(struct lscpu_cxt *cxt)
 				pr->curr_type->bogomips = xstrdup(value);
 			if (pattern->id == PAT_MHZ && pr->curr_cpu && value) {
 				errno = 0;
-				pr->curr_cpu->mhz_cur_freq = strtof(value, NULL);
+				pr->curr_cpu->mhz_cur_freq = (float) c_strtod(value, NULL);
 				if (errno)
 					pr->curr_cpu->mhz_cur_freq = 0;
 			}
