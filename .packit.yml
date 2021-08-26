@@ -25,6 +25,8 @@ actions:
     # We need to call autogen, since we use a custom tarball
     - "sed -i '/^### Dependencies/aBuildRequires: bison' .packit_rpm/util-linux.spec"
     - "sed -i '/^unset LINGUAS/a./autogen.sh' .packit_rpm/util-linux.spec"
+    # Enable tests after build
+    - "sed -i '/^### Macros/a%define _with_check 1' .packit_rpm/util-linux.spec"
   create-archive:
     # We need to override the default create-archive action, since we need to tweak
     # the resulting tarball and add a .tarball-version file to it, otherwise
