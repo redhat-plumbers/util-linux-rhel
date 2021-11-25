@@ -1036,6 +1036,39 @@ int sysfs_scsi_path_contains(struct sysfs_cxt *cxt, const char *pattern)
 	return strstr(linkc, pattern) != NULL;
 }
 
+char *sysfs_chrdev_devno_to_devname(dev_t devno, char *buf, size_t bufsiz)
+{
+	char link[PATH_MAX];
+	char path[PATH_MAX];
+	char *name;
+	ssize_t	sz;
+
+	sz = snprintf(path, sizeof(path),
+		      _PATH_SYS_DEVCHAR "/%u:%u", major(devno), minor(devno));
+	if (sz <= 0)
+		return NULL;
+
+        /* read /sys/dev/char/<maj:min> link */
+	sz = readlink(path, link, sizeof(link) - 1);
+	if (sz < 0)
+		return NULL;
+	link[sz] = '\0';
+
+	name = strrchr(link, '/');
+	if (!name)
+		return NULL;
+
+	name++;
+	sz = strlen(name);
+	if ((size_t) sz + 1 > bufsiz)
+		return NULL;
+
+	memcpy(buf, name, sz + 1);
+	sysfs_devname_sys_to_dev(buf);
+	return buf;
+
+}
+
 #ifdef TEST_PROGRAM_SYSFS
 #include <errno.h>
 #include <err.h>
