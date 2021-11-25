@@ -92,6 +92,8 @@ extern int sysfs_scsi_host_is(struct sysfs_cxt *cxt, const char *type);
 extern int sysfs_scsi_has_attribute(struct sysfs_cxt *cxt, const char *attr);
 extern int sysfs_scsi_path_contains(struct sysfs_cxt *cxt, const char *pattern);
 
+extern char *sysfs_chrdev_devno_to_devname(dev_t devno, char *buf, size_t bufsiz);
+
 /**
  * sysfs_devname_sys_to_dev:
  * @name: devname to be converted in place
