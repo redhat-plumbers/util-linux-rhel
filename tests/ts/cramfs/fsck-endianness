@@ -27,6 +27,9 @@ ts_check_test_command "$TS_HELPER_MD5"
 
 ts_skip_nonroot
 
+# does not work on s390
+TS_KNOWN_FAIL="yes"
+
 IMAGE_LITTLE="$TS_SELF/cramfs-little.img"	#Known good little endian image
 IMAGE_BIG="$TS_SELF/cramfs-big.img"		#Known good big endian image
 
