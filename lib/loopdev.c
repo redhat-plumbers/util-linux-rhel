@@ -42,6 +42,8 @@
 #include "blkdev.h"
 #include "debug.h"
 
+#define LOOPDEV_MAX_TRIES       10
+
 /*
  * Debug stuff (based on include/debug.h)
  */
@@ -1260,6 +1262,7 @@ int loopcxt_setup_device(struct loopdev_cxt *lc)
 {
 	int file_fd, dev_fd, mode = O_RDWR, rc = -1, cnt = 0;
 	int errsv = 0;
+	int err, again;
 
 	if (!lc || !*lc->device || !lc->filename)
 		return -EINVAL;
@@ -1331,7 +1334,17 @@ int loopcxt_setup_device(struct loopdev_cxt *lc)
 
 	DBG(SETUP, ul_debugobj(lc, "LOOP_SET_FD: OK"));
 
-	if (ioctl(dev_fd, LOOP_SET_STATUS64, &lc->info)) {
+	cnt = 0;
+	do {
+		err = ioctl(dev_fd, LOOP_SET_STATUS64, &lc->info);
+		again = err && errno == EAGAIN;
+		if (again) {
+			xusleep(250000);
+			cnt++;
+		}
+	} while (again && cnt <= LOOPDEV_MAX_TRIES);
+
+	if (err) {
 		rc = -errno;
 		errsv = errno;
 		DBG(SETUP, ul_debugobj(lc, "LOOP_SET_STATUS64 failed: %m"));
@@ -1376,7 +1389,7 @@ err:
  */
 int loopcxt_set_status(struct loopdev_cxt *lc)
 {
-	int dev_fd, rc = -1;
+	int dev_fd, rc = -1, err, again, tries = 0;
 
 	errno = 0;
 	dev_fd = loopcxt_get_fd(lc);
@@ -1387,7 +1400,16 @@ int loopcxt_set_status(struct loopdev_cxt *lc)
 	}
 	DBG(SETUP, ul_debugobj(lc, "device open: OK"));
 
-	if (ioctl(dev_fd, LOOP_SET_STATUS64, &lc->info)) {
+	do {
+		err = ioctl(dev_fd, LOOP_SET_STATUS64, &lc->info);
+		again = err && errno == EAGAIN;
+		if (again) {
+			xusleep(250000);
+			tries++;
+		}
+	} while (again && tries <= LOOPDEV_MAX_TRIES);
+
+	if (err) {
 		rc = -errno;
 		DBG(SETUP, ul_debugobj(lc, "LOOP_SET_STATUS64 failed: %m"));
 		return rc;
@@ -1440,12 +1462,22 @@ int loopcxt_set_dio(struct loopdev_cxt *lc, unsigned long use_dio)
 int loopcxt_set_blocksize(struct loopdev_cxt *lc, uint64_t blocksize)
 {
 	int fd = loopcxt_get_fd(lc);
+	int err, again, tries = 0;
 
 	if (fd < 0)
 		return -EINVAL;
 
-	/* Kernels prior to v4.14 don't support this ioctl */
-	if (ioctl(fd, LOOP_SET_BLOCK_SIZE, (unsigned long) blocksize) < 0) {
+	do {
+		/* Kernels prior to v4.14 don't support this ioctl */
+		err = ioctl(fd, LOOP_SET_BLOCK_SIZE, (unsigned long) blocksize);
+		again = err && errno == EAGAIN;
+		if (again) {
+			xusleep(250000);
+			tries++;
+		}
+	} while (again && tries <= LOOPDEV_MAX_TRIES);
+
+	if (err) {
 		int rc = -errno;
 		DBG(CXT, ul_debugobj(lc, "LOOP_SET_BLOCK_SIZE failed: %m"));
 		return rc;
