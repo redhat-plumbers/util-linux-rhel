@@ -1298,7 +1298,10 @@ int blkid_do_wipe(blkid_probe pr, int dryrun)
 		/* wipen on device */
 		if (write_all(fd, buf, len))
 			return -1;
-		fsync(fd);
+
+		if (fsync(fd) != 0)
+			return -1;
+
 		pr->flags &= ~BLKID_FL_MODIF_BUFF;	/* be paranoid */
 
 		return blkid_probe_step_back(pr);
