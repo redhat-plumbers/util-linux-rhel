@@ -49,6 +49,8 @@ struct uuidd_cxt_t {
 	const char	*cleanup_pidfile;
 	const char	*cleanup_socket;
 	uint32_t	timeout;
+	uint32_t	cont_clock_offset;
+
 	unsigned int	debug: 1,
 			quiet: 1,
 			no_fork: 1,
@@ -73,6 +75,8 @@ static void __attribute__((__noreturn__)) usage(void)
 	fputs(_(" -P, --no-pid            do not create pid file\n"), out);
 	fputs(_(" -F, --no-fork           do not daemonize using double-fork\n"), out);
 	fputs(_(" -S, --socket-activation do not create listening socket\n"), out);
+	fputs(_(" -C, --cont-clock[=<NUM>[hd]]\n"), out);
+	fputs(_("                         activate continuous clock handling\n"), out);
 	fputs(_(" -d, --debug             run in debugging mode\n"), out);
 	fputs(_(" -q, --quiet             turn on quiet mode\n"), out);
 	fputs(USAGE_SEPARATOR, out);
@@ -401,6 +405,15 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
 	pfd[POLLFD_SOCKET].fd = s;
 	pfd[POLLFD_SIGNAL].events = pfd[POLLFD_SOCKET].events = POLLIN | POLLERR | POLLHUP;
 
+	num = 1;
+	if (uuidd_cxt->cont_clock_offset) {
+		/* trigger initialization */
+		(void) __uuid_generate_time_cont(uu, &num, uuidd_cxt->cont_clock_offset);
+		if (uuidd_cxt->debug)
+			fprintf(stderr, _("max_clock_offset = %u sec\n"),
+				uuidd_cxt->cont_clock_offset);
+	}
+
 	while (1) {
 		ret = poll(pfd, ARRAY_SIZE(pfd),
 				uuidd_cxt->timeout ?
@@ -458,7 +471,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
 			break;
 		case UUIDD_OP_TIME_UUID:
 			num = 1;
-			__uuid_generate_time(uu, &num);
+			__uuid_generate_time_cont(uu, &num, uuidd_cxt->cont_clock_offset);
 			if (uuidd_cxt->debug) {
 				uuid_unparse(uu, str);
 				fprintf(stderr, _("Generated time UUID: %s\n"), str);
@@ -477,7 +490,7 @@ static void server_loop(const char *socket_path, const char *pidfile_path,
 			reply_len = sizeof(uu);
 			break;
 		case UUIDD_OP_BULK_TIME_UUID:
-			__uuid_generate_time(uu, &num);
+			 __uuid_generate_time_cont(uu, &num, uuidd_cxt->cont_clock_offset);
 			if (uuidd_cxt->debug) {
 				uuid_unparse(uu, str);
 				fprintf(stderr, P_("Generated time UUID %s "
@@ -530,6 +543,64 @@ static void __attribute__ ((__noreturn__)) unexpected_size(int size)
 	errx(EXIT_FAILURE, _("Unexpected reply length from server %d"), size);
 }
 
+/* Backport from v2.39 lib/strutils.c */
+static int ul_strtos64(const char *str, int64_t *num, int base)
+{
+	char *end = NULL;
+
+	if (str == NULL || *str == '\0')
+		return -(errno = EINVAL);
+
+	errno = 0;
+	*num = (int64_t) strtoimax(str, &end, base);
+
+	if (errno != 0)
+		return -errno;
+	if (str == end || (end && *end))
+		return -(errno = EINVAL);
+	return 0;
+}
+
+/* Backport from v2.39 lib/strutils.c */
+static int64_t str2num_or_err(const char *str, int base, const char *errmesg,
+			     int64_t low, int64_t up)
+{
+	int64_t num = 0;
+	int rc;
+
+	rc = ul_strtos64(str, &num, base);
+	if (rc == 0 && ((low && num < low) || (up && num > up)))
+		rc = -(errno = ERANGE);
+
+	if (rc) {
+		if (errno == ERANGE)
+			err(EXIT_FAILURE, "%s: '%s'", errmesg, str);
+		errx(EXIT_FAILURE, "%s: '%s'", errmesg, str);
+	}
+	return num;
+}
+
+static uint32_t parse_cont_clock(char *arg)
+{
+	uint32_t min_val = 60,
+		 max_val = (3600 * 24 * 365),
+		 factor = 1;
+	char *p = &arg[strlen(arg)-1];
+
+	if ('h' == *p) {
+		*p = '\0';
+		factor = 3600;
+		min_val = 1;
+	}
+	if ('d' == *p) {
+		*p = '\0';
+		factor = 24 * 3600;
+		min_val = 1;
+	}
+	return factor * str2num_or_err(optarg, 10, _("failed to parse --cont-clock/-C"),
+				       min_val, max_val / factor);
+}
+
 int main(int argc, char **argv)
 {
 	const char	*socket_path = UUIDD_SOCKET_PATH;
@@ -543,7 +614,7 @@ int main(int argc, char **argv)
 	int		no_pid = 0;
 	int		s_flag = 0;
 
-	struct uuidd_cxt_t uuidd_cxt = { .timeout = 0 };
+	struct uuidd_cxt_t uuidd_cxt = { .timeout = 0, .cont_clock_offset = 0 };
 
 	static const struct option longopts[] = {
 		{"pid", required_argument, NULL, 'p'},
@@ -556,6 +627,7 @@ int main(int argc, char **argv)
 		{"no-pid", no_argument, NULL, 'P'},
 		{"no-fork", no_argument, NULL, 'F'},
 		{"socket-activation", no_argument, NULL, 'S'},
+		{"cont-clock", optional_argument, NULL, 'C'},
 		{"debug", no_argument, NULL, 'd'},
 		{"quiet", no_argument, NULL, 'q'},
 		{"version", no_argument, NULL, 'V'},
@@ -576,10 +648,16 @@ int main(int argc, char **argv)
 	atexit(close_stdout);
 
 	while ((c =
-		getopt_long(argc, argv, "p:s:T:krtn:PFSdqVh", longopts,
+		getopt_long(argc, argv, "p:s:T:krtn:PFSC::dqVh", longopts,
 			    NULL)) != -1) {
 		err_exclusive_options(c, longopts, excl, excl_st);
 		switch (c) {
+		case 'C':
+			if (optarg != NULL)
+				uuidd_cxt.cont_clock_offset = parse_cont_clock(optarg);
+			else
+				uuidd_cxt.cont_clock_offset = 7200; /* default 2h */
+			break;
 		case 'd':
 			uuidd_cxt.debug = 1;
 			break;
