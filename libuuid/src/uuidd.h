@@ -50,5 +50,6 @@
 
 extern int __uuid_generate_time(uuid_t out, int *num);
 extern void __uuid_generate_random(uuid_t out, int *num);
+extern int __uuid_generate_time_cont(uuid_t out, int *num, uint32_t cont);
 
 #endif /* _UUID_UUID_H */
