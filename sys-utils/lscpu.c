@@ -1850,7 +1850,10 @@ print_summary(struct lscpu_desc *desc, struct lscpu_modifier *mod)
 			}
 		} else {
 			if (desc->is_cluster) {
-				int sockets = get_number_of_physical_sockets_from_dmi();
+				int sockets = 0;
+
+				if (mod->system == SYSTEM_LIVE)
+					sockets = get_number_of_physical_sockets_from_dmi();
 
 				if (sockets > 0)
 					add_summary_n(tb, _("Socket(s):"), sockets);
@@ -2109,7 +2112,8 @@ int main(int argc, char *argv[])
 		qsort(desc->ecaches, desc->necaches,
 				sizeof(struct cpu_cache), cachecmp);
 
-	desc->is_cluster = is_fallback_to_cluster(desc);
+	if (mod->system == SYSTEM_LIVE)
+		desc->is_cluster = is_fallback_to_cluster(desc);
 
 	read_nodes(desc);
 	read_hypervisor(desc, mod);
