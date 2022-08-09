@@ -852,7 +852,7 @@ static struct lslogins_user *get_user_info(struct lslogins_control *ctl, const c
 				while (p && *p == '!')
 					p++, i++;
 
-				if (i != 0 && (!*p || valid_pwd(p)))
+				if (i != 0 && p && (!*p || valid_pwd(p)))
 					user->pwd_lock = STATUS_TRUE;
 			} else
 				user->pwd_lock = STATUS_UNKNOWN;
