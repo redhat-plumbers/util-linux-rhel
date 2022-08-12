@@ -43,22 +43,29 @@ dd if="$IMG" of="$IMG" oflag=append bs=1024k count=5 conv=notrunc &>/dev/null
 
 echo "second should fail" >>$TS_OUTPUT
 $TS_CMD_MOUNT -oloop "$IMG" "$TS_MOUNTPOINT-1" >> $TS_OUTPUT 2>> $TS_ERRLOG
+udevadm settle
 $TS_CMD_MOUNT -oloop,offset=$OFFSET "$IMG" "$TS_MOUNTPOINT-2" 2>&1 \
        | sed 's/:.*:/: <target>/; s/for .*/for <source>/' >> $TS_OUTPUT
 $TS_CMD_UMOUNT "$TS_MOUNTPOINT-1" >> $TS_OUTPUT 2>> $TS_ERRLOG
+udevadm settle
 
 echo "should succeed" >>$TS_OUTPUT
 $TS_CMD_MOUNT -oloop,sizelimit=$OFFSET "$IMG" "$TS_MOUNTPOINT-1" >> $TS_OUTPUT 2>> $TS_ERRLOG
+udevadm settle
 $TS_CMD_MOUNT -oloop,offset=$OFFSET "$IMG" "$TS_MOUNTPOINT-2" >> $TS_OUTPUT 2>> $TS_ERRLOG
+udevadm settle
 $TS_CMD_UMOUNT "$TS_MOUNTPOINT-1" >> $TS_OUTPUT 2>> $TS_ERRLOG
 $TS_CMD_UMOUNT "$TS_MOUNTPOINT-2" >> $TS_OUTPUT 2>> $TS_ERRLOG
+udevadm settle
 
 echo "both should fail" >>$TS_OUTPUT
 LOOPDEV=$($TS_CMD_LOSETUP --show -f --offset 1 --sizelimit $OFFSET "$IMG")
+udevadm settle
 $TS_CMD_MOUNT -oloop,sizelimit=$OFFSET "$IMG" "$TS_MOUNTPOINT-1" 2>&1 \
 	| sed 's/:.*:/: <target>/; s/for .*/for <source>/' >> $TS_OUTPUT
 $TS_CMD_MOUNT -oloop,offset=$OFFSET "$IMG" "$TS_MOUNTPOINT-2" 2>&1 \
 	| sed 's/:.*:/: <target>/; s/for .*/for <source>/' >> $TS_OUTPUT
+udevadm settle
 $TS_CMD_LOSETUP --detach $LOOPDEV
 
 ts_log "Success"
