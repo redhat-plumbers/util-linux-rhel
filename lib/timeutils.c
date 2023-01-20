@@ -320,10 +320,8 @@ int parse_timestamp(const char *t, usec_t *usec)
 
 	tm = copy;
 	k = strptime(t, "%Y%m%d%H%M%S", &tm);
-	if (k && *k == 0) {
-		tm.tm_sec = 0;
+	if (k && *k == 0)
 		goto finish;
-	}
 
 	return -EINVAL;
 
