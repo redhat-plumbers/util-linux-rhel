@@ -35,6 +35,7 @@
 
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/vfs.h>
 #include <linux/fs.h>
 
 #include "nls.h"
@@ -43,6 +44,7 @@
 #include "closestream.h"
 #include "pathnames.h"
 #include "sysfs.h"
+#include "statfs_magic.h"
 
 #include <libmount.h>
 
@@ -84,6 +86,7 @@ static int fstrim_filesystem(const char *path, struct fstrim_range *rangetpl,
 		goto done;
 	}
 	errno = 0;
+
 	if (ioctl(fd, FITRIM, &range)) {
 		rc = errno == EOPNOTSUPP || errno == ENOTTY ? 1 : -errno;
 
@@ -114,7 +117,7 @@ static int has_discard(const char *devname, struct sysfs_cxt *wholedisk)
 	struct sysfs_cxt cxt, *parent = NULL;
 	uint64_t dg = 0;
 	dev_t disk = 0, dev;
-	int rc;
+	int rc, rdonly = 0;
 
 	dev = sysfs_devname_to_devno(devname, NULL);
 	if (!dev)
@@ -139,11 +142,46 @@ static int has_discard(const char *devname, struct sysfs_cxt *wholedisk)
 	rc = sysfs_init(&cxt, dev, parent);
 	if (!rc)
 		rc = sysfs_read_u64(&cxt, "queue/discard_granularity", &dg);
+	if (!rc)
+		sysfs_scanf(&cxt, "ro", "%d", &rdonly);
 
 	sysfs_deinit(&cxt);
-	return rc == 0 && dg > 0;
+	return rc == 0 && dg > 0 && rdonly == 0;
 }
 
+static int is_unwanted_fs(struct libmnt_fs *fs, const char *tgt)
+{
+	struct statfs vfs;
+	int fd, rc;
+
+	if (mnt_fs_is_pseudofs(fs))
+		return 1;
+	if (mnt_fs_is_netfs(fs))
+		return 1;
+	if (mnt_fs_is_swaparea(fs))
+		return 1;
+	if (mnt_fs_match_fstype(fs, "autofs"))
+		return 1;
+	if (mnt_fs_match_options(fs, "ro"))
+		return 1;
+
+	fd = open(tgt, O_PATH);
+	if (fd < 0)
+		return 1;
+	rc = fstatfs(fd, &vfs) != 0 || vfs.f_type == STATFS_AUTOFS_MAGIC;
+	close(fd);
+	if (rc)
+		return 1;
+
+	/* FITRIM on read-only filesystem can fail, and it can fail */
+	if (access(tgt, W_OK) != 0) {
+		if (errno == EROFS)
+			return 1;
+		if (errno == EACCES)
+			return 1;
+	}
+	return 0;
+}
 
 static int uniq_fs_target_cmp(
 		struct libmnt_table *tb __attribute__((__unused__)),
@@ -182,30 +220,38 @@ static int fstrim_all(struct fstrim_range *rangetpl, int verbose)
 
 	mnt_init_debug(0);
 
-	itr = mnt_new_iter(MNT_ITER_BACKWARD);
-	if (!itr)
-		err(MNT_EX_FAIL, _("failed to initialize libmount iterator"));
-
 	tab = mnt_new_table_from_file(_PATH_PROC_MOUNTINFO);
 	if (!tab)
 		err(MNT_EX_FAIL, _("failed to parse %s"), _PATH_PROC_MOUNTINFO);
 
+	if (mnt_table_is_empty(tab)) {
+		mnt_unref_table(tab);
+		return MNT_EX_SUCCESS;
+	}
+
 	/* de-duplicate by mountpoints */
 	mnt_table_uniq_fs(tab, 0, uniq_fs_target_cmp);
 
-	/* de-duplicate by source */
-	mnt_table_uniq_fs(tab, MNT_UNIQ_FORWARD, uniq_fs_source_cmp);
+	itr = mnt_new_iter(MNT_ITER_BACKWARD);
+	if (!itr)
+		err(MNT_EX_FAIL, _("failed to initialize libmount iterator"));
 
+	/* Remove useless entries and canonicalize the table */
 	while (mnt_table_next_fs(tab, itr, &fs) == 0) {
 		const char *src = mnt_fs_get_srcpath(fs),
 			   *tgt = mnt_fs_get_target(fs);
 		char *path;
 		int rc = 1;
 
-		if (!src || !tgt || *src != '/' ||
-		    mnt_fs_is_pseudofs(fs) ||
-		    mnt_fs_is_netfs(fs))
+		if (!tgt || is_unwanted_fs(fs, tgt)) {
+			mnt_table_remove_fs(tab, fs);
 			continue;
+		}
+
+		if (!src || *src != '/') {
+			mnt_table_remove_fs(tab, fs);
+			continue;
+		}
 
 		/* Is it really accessible mountpoint? Not all mountpoints are
 		 * accessible (maybe over mounted by another filesystem) */
@@ -213,11 +259,25 @@ static int fstrim_all(struct fstrim_range *rangetpl, int verbose)
 		if (path && strcmp(path, tgt) == 0)
 			rc = 0;
 		free(path);
-		if (rc)
+		if (rc) {
+			mnt_table_remove_fs(tab, fs);
 			continue;	/* overlaying mount */
+		}
 
-		if (!has_discard(src, &wholedisk))
+		if (!has_discard(src, &wholedisk)) {
+			mnt_table_remove_fs(tab, fs);
 			continue;
+		}
+	}
+
+	/* de-duplicate by source */
+	mnt_table_uniq_fs(tab, MNT_UNIQ_FORWARD, uniq_fs_source_cmp);
+
+	mnt_reset_iter(itr, MNT_ITER_BACKWARD);
+
+	/* Do FITRIM */
+	while (mnt_table_next_fs(tab, itr, &fs) == 0) {
+		const char *tgt = mnt_fs_get_target(fs);
 		cnt++;
 
 		/*
@@ -231,10 +291,10 @@ static int fstrim_all(struct fstrim_range *rangetpl, int verbose)
 		if (fstrim_filesystem(tgt, rangetpl, verbose) < 0)
 		       cnt_err++;
 	}
+	mnt_free_iter(itr);
 
 	sysfs_deinit(&wholedisk);
 	mnt_unref_table(tab);
-	mnt_free_iter(itr);
 
 	if (cnt && cnt == cnt_err)
 		return MNT_EX_FAIL;		/* all failed */
