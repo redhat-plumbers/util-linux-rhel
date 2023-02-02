@@ -1123,7 +1123,7 @@ int mnt_context_get_umount_excode(
 			snprintf(buf, bufsz, _("must be superuser to unmount"));
 			break;
 		case EACCES:
-			snprintf(buf, bufsz, _("block devices are not permitted on filesystem"));
+			snprintf(buf, bufsz, _("filesystem not accessible"));
 			break;
 		default:
 			return mnt_context_get_generic_excode(syserr, buf, bufsz,_("umount(2) system call failed: %m"));
