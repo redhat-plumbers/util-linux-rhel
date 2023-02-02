@@ -339,15 +339,22 @@ static int time_formatter(int fmt, char *dst, size_t dlen, time_t *when)
 		break;
 	case LAST_TIMEFTM_HHMM:
 	{
-		struct tm *tm = localtime(when);
-		if (!snprintf(dst, dlen, "%02d:%02d", tm->tm_hour, tm->tm_min))
+		struct tm tm;
+
+		localtime_r(when, &tm);
+		if (!snprintf(dst, dlen, "%02d:%02d", tm.tm_hour, tm.tm_min))
 			ret = -1;
 		break;
 	}
 	case LAST_TIMEFTM_CTIME:
-		snprintf(dst, dlen, "%s", ctime(when));
+	{
+		char buf[CTIME_BUFSIZ];
+
+		ctime_r(when, buf);
+		snprintf(dst, dlen, "%s", buf);
 		ret = rtrim_whitespace((unsigned char *) dst);
 		break;
+	}
 	case LAST_TIMEFTM_ISO8601:
 		ret = strtime_iso(when, ISO_TIMESTAMP_T, dst, dlen);
 		break;
@@ -394,8 +401,7 @@ static int list(const struct last_control *ctl, struct utmpx *p, time_t logout_t
 	/*
 	 *	uucp and ftp have special-type entries
 	 */
-	utline[0] = 0;
-	strncat(utline, p->ut_line, sizeof(p->ut_line));
+	mem2strcpy(utline, p->ut_line, sizeof(p->ut_line), sizeof(utline));
 	if (strncmp(utline, "ftp", 3) == 0 && isdigit(utline[3]))
 		utline[3] = 0;
 	if (strncmp(utline, "uucp", 4) == 0 && isdigit(utline[4]))
@@ -447,48 +453,48 @@ static int list(const struct last_control *ctl, struct utmpx *p, time_t logout_t
 
 	if (logout_time == currentdate) {
 		if (ctl->time_fmt > LAST_TIMEFTM_SHORT) {
-			sprintf(logouttime, "  still running");
+			snprintf(logouttime, sizeof(logouttime), "  still running");
 			length[0] = 0;
 		} else {
-			sprintf(logouttime, "  still");
-			sprintf(length, "running");
+			snprintf(logouttime, sizeof(logouttime), "  still");
+			snprintf(length, sizeof(length), "running");
 		}
 	} else if (days) {
-		sprintf(length, "(%d+%02d:%02d)", days, abs(hours), abs(mins)); /* hours and mins always shown as positive (w/o minus sign!) even if secs < 0 */
+		snprintf(length, sizeof(length), "(%d+%02d:%02d)", days, abs(hours), abs(mins)); /* hours and mins always shown as positive (w/o minus sign!) even if secs < 0 */
 	} else if (hours) {
-		sprintf(length, " (%02d:%02d)", hours, abs(mins));  /* mins always shown as positive (w/o minus sign!) even if secs < 0 */
+		snprintf(length, sizeof(length), " (%02d:%02d)", hours, abs(mins));  /* mins always shown as positive (w/o minus sign!) even if secs < 0 */
 	} else if (secs >= 0) {
-		sprintf(length, " (%02d:%02d)", hours, mins); 
+		snprintf(length, sizeof(length), " (%02d:%02d)", hours, mins);
 	} else {
-		sprintf(length, " (-00:%02d)", abs(mins));  /* mins always shown as positive (w/o minus sign!) even if secs < 0 */
+		snprintf(length, sizeof(length), " (-00:%02d)", abs(mins));  /* mins always shown as positive (w/o minus sign!) even if secs < 0 */
 	}
 
 	switch(what) {
 		case R_CRASH:
-			sprintf(logouttime, "- crash");
+			snprintf(logouttime, sizeof(logouttime), "- crash");
 			break;
 		case R_DOWN:
-			sprintf(logouttime, "- down ");
+			snprintf(logouttime, sizeof(logouttime), "- down ");
 			break;
 		case R_NOW:
 			if (ctl->time_fmt > LAST_TIMEFTM_SHORT) {
-				sprintf(logouttime, "  still logged in");
+				snprintf(logouttime, sizeof(logouttime), "  still logged in");
 				length[0] = 0;
 			} else {
-				sprintf(logouttime, "  still");
-				sprintf(length, "logged in");
+				snprintf(logouttime, sizeof(logouttime), "  still");
+				snprintf(length, sizeof(length), "logged in");
 			}
 			break;
 		case R_PHANTOM:
 			if (ctl->time_fmt > LAST_TIMEFTM_SHORT) {
-				sprintf(logouttime, "  gone - no logout");
+				snprintf(logouttime, sizeof(logouttime), "  gone - no logout");
 				length[0] = 0;
 			} else if (ctl->time_fmt == LAST_TIMEFTM_SHORT) {
-				sprintf(logouttime, "   gone");
-				sprintf(length, "- no logout");
+				snprintf(logouttime, sizeof(logouttime), "   gone");
+				snprintf(length, sizeof(length), "- no logout");
 			} else {
 				logouttime[0] = 0;
-				sprintf(length, "no logout");
+				snprintf(length, sizeof(length), "no logout");
 			}
 			break;
 		case R_TIMECHANGE:
@@ -508,15 +514,8 @@ static int list(const struct last_control *ctl, struct utmpx *p, time_t logout_t
 	r = -1;
 	if (ctl->usedns || ctl->useip)
 		r = dns_lookup(domain, sizeof(domain), ctl->useip, (int32_t*)p->ut_addr_v6);
-	if (r < 0) {
-		size_t sz = sizeof(p->ut_host);
-
-		if (sz > sizeof(domain))
-			sz = sizeof(domain);
-
-		xstrncpy(domain, p->ut_host, sz);
-	}
-
+	if (r < 0)
+		mem2strcpy(domain, p->ut_host, sizeof(p->ut_host), sizeof(domain));
 
 	if (ctl->showhost) {
 		if (!ctl->altlist) {
@@ -607,10 +606,11 @@ static int is_phantom(const struct last_control *ctl, struct utmpx *ut)
 
 	if (ut->ut_tv.tv_sec < ctl->boot_time.tv_sec)
 		return 1;
+	ut->ut_user[sizeof(ut->ut_user) - 1] = '\0';
 	pw = getpwnam(ut->ut_user);
 	if (!pw)
 		return 1;
-	sprintf(path, "/proc/%u/loginuid", ut->ut_pid);
+	snprintf(path, sizeof(path), "/proc/%u/loginuid", ut->ut_pid);
 	if (access(path, R_OK) == 0) {
 		unsigned int loginuid;
 		FILE *f = NULL;
@@ -624,8 +624,11 @@ static int is_phantom(const struct last_control *ctl, struct utmpx *ut)
 			return 1;
 	} else {
 		struct stat st;
+		char utline[sizeof(ut->ut_line) + 1];
 
-		sprintf(path, "/dev/%s", ut->ut_line);
+		mem2strcpy(utline, ut->ut_line, sizeof(ut->ut_line), sizeof(utline));
+
+		snprintf(path, sizeof(path), "/dev/%s", utline);
 		if (stat(path, &st))
 			return 1;
 		if (pw->pw_uid != st.st_uid)
@@ -736,7 +739,7 @@ static void process_wtmp_file(const struct last_control *ctl,
 		else {
 			if (ut.ut_type != DEAD_PROCESS &&
 			    ut.ut_user[0] && ut.ut_line[0] &&
-			    strcmp(ut.ut_user, "LOGIN") != 0)
+			    strncmp(ut.ut_user, "LOGIN", 5) != 0)
 				ut.ut_type = USER_PROCESS;
 			/*
 			 * Even worse, applications that write ghost
@@ -749,7 +752,7 @@ static void process_wtmp_file(const struct last_control *ctl,
 			/*
 			 * Clock changes.
 			 */
-			if (strcmp(ut.ut_user, "date") == 0) {
+			if (strncmp(ut.ut_user, "date", 4) == 0) {
 				if (ut.ut_line[0] == '|')
 					ut.ut_type = OLD_TIME;
 				if (ut.ut_line[0] == '{')
@@ -784,7 +787,7 @@ static void process_wtmp_file(const struct last_control *ctl,
 		case RUN_LVL:
 			x = ut.ut_pid & 255;
 			if (ctl->extended) {
-				sprintf(ut.ut_line, "(to lvl %c)", x);
+				snprintf(ut.ut_line, sizeof(ut.ut_line), "(to lvl %c)", x);
 				quit = list(ctl, &ut, lastrch, R_NORMAL);
 			}
 			if (x == '0' || x == '6') {
