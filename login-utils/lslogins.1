@@ -116,6 +116,24 @@ Delimit user entries with a nul character, instead of a newline.
 
 .SH NOTES
 The default UID thresholds are read from /etc/login.defs.
+.SS "Password status"
+.sp
+Multiple fields describe password status.
+.sp
+\fB"Login by password disabled"\fP
+.RS 4
+\*(Aqyes\*(Aq means that there is no valid password. The password hash is missing, or the hash method is unknown or contains invalid chars.
+.RE
+.sp
+\fB"Password not required (empty)"\fP
+.RS 4
+The password is not set (hash is missing); this is common for locked system accounts. Not requiring a password does not mean the user can log\-in without a password. It depends on the password "lock" status.
+.RE
+.sp
+\fB"Password is locked"\fP
+.RS 4
+The password is prefixed by \*(Aq!!\*(Aq, and the user cannot login although the password is set or empty. This is common for new accounts without a set password.
+.RE
 
 .SH EXIT STATUS
 .TP
