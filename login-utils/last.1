@@ -178,6 +178,10 @@ files to be used, they can be created with a simple
 .BR touch (1)
 command (for example,
 .IR "touch /var/log/wtmp" ).
+
+The utmp file format uses fixed sizes of strings, which means that very long strings are
+impossible to store in the file and impossible to display by last. The usual limits are 32
+bytes for a user and line name and 256 bytes for a hostname.
 .SH FILES
 /var/log/wtmp
 .br
