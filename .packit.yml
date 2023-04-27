@@ -1,0 +1,58 @@
+---
+# vi:ts=2 sw=2 et:
+#
+# Docs: https://packit.dev/docs/
+
+specfile_path: .packit_rpm/util-linux.spec
+synced_files:
+  - .packit.yaml
+  - src: .packit_rpm/util-linux.spec
+    dest: util-linux.spec
+upstream_package_name: util-linux
+downstream_package_name: util-linux
+# `git describe` returns in util-linux's case 'v2.37.2-xxx' which breaks RPM version
+# # detection (that expects 2.37.2-xxx'). Let's tweak the version string accordingly
+upstream_tag_template: "v{version}"
+
+actions:
+  post-upstream-clone:
+    # Use the CentOS Stream specfile
+    - "git clone https://gitlab.com/redhat/centos-stream/rpms/util-linux.git .packit_rpm --depth=1"
+    # Drop the "sources" file so rebase-helper doesn't think we're a dist-git
+    - "rm -fv .packit_rpm/sources"
+    # Drop all patches, since they're already included in the tarball
+    - "sed -ri '/^Patch[0-9]+:/d' .packit_rpm/util-linux.spec"
+    # We need to call autogen, since we use a custom tarball
+    - "sed -i '/^### Dependencies/aBuildRequires: bison' .packit_rpm/util-linux.spec"
+    - "sed -i '/^unset LINGUAS/a./autogen.sh' .packit_rpm/util-linux.spec"
+    # Enable tests after build
+    - "sed -i '/^### Macros/a%define _with_check 1' .packit_rpm/util-linux.spec"
+  create-archive:
+    # We need to override the default create-archive action, since we need to tweak
+    # the resulting tarball and add a .tarball-version file to it, otherwise
+    # util-linux fails to detect its version during build
+    - "bash -c 'echo $PACKIT_PROJECT_VERSION >.tarball-version'"
+    - "bash -c 'git archive --prefix ${PACKIT_PROJECT_NAME_VERSION}/ --add-file .tarball-version --output .packit_rpm/${PACKIT_PROJECT_NAME_VERSION}.tar.gz HEAD'"
+    - "bash -c 'echo .packit_rpm/${PACKIT_PROJECT_NAME_VERSION}.tar.gz'"
+
+# Available targets can be listed via `copr-cli list-chroots`
+jobs:
+# Build test
+- job: copr_build
+  trigger: commit
+  metadata:
+    branch: rhel-9
+    targets:
+      # FIXME: change to CentOS 9 once it's available
+      - fedora-34-aarch64
+      - fedora-34-ppc64le
+      - fedora-34-x86_64
+
+# TODO: configure TFT
+# Run tests (via testing farm)
+#- job: tests
+#  trigger: pull_request
+#  metadata:
+#    targets:
+#      # FIXME: change to CentOS 9 once it's available
+#      - fedora-34-x86_64
