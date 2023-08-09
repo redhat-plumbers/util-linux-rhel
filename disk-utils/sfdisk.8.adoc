@@ -342,6 +342,8 @@ creates empty GPT partition table. Note that the *--append* disables this featur
 
 It is recommended to save the layout of your devices. *sfdisk* supports two ways.
 
+=== Dump in sfdisk compatible format
+
 Use the *--dump* option to save a description of the device layout to a text file. The dump format is suitable for later *sfdisk* input. For example:
 
 ____
@@ -353,6 +355,10 @@ This can later be restored by:
 ____
 *sfdisk /dev/sda < sda.dump*
 ____
+
+Note that sfdisk completely restores partition types and partition UUIDs. This could potentially become problematic if you duplicate the same layout to different disks, as it may result in duplicate UUIDs within your system.
+
+=== Full binary backup
 
 If you want to do a full (binary) backup of all sectors where the partition table is stored, then use the *--backup* option. It writes the sectors to _~/sfdisk-<device>-<offset>.bak_ files. The default name of the backup file can be changed with the *--backup-file* option. The backup files contain only raw data from the _device_. Note that the same concept of backup files is used by *wipefs*(8). For example:
 
