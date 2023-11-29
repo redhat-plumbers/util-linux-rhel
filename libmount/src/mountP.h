@@ -401,6 +401,7 @@ extern const struct libmnt_optmap *mnt_optmap_get_entry(
 /* optstr.c */
 extern int mnt_optstr_get_uid(const char *optstr, const char *name, uid_t *uid);
 extern int mnt_optstr_remove_option_at(char **optstr, char *begin, char *end);
+extern int mnt_optstr_get_missing(const char *optstr, const char *wanted, char **missing);
 extern int mnt_optstr_fix_gid(char **optstr, char *value, size_t valsz, char **next);
 extern int mnt_optstr_fix_uid(char **optstr, char *value, size_t valsz, char **next);
 extern int mnt_optstr_fix_secontext(char **optstr, char *value, size_t valsz, char **next);
