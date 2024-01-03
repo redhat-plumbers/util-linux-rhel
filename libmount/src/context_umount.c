@@ -272,7 +272,7 @@ static int lookup_umount_fs_by_statfs(struct libmnt_context *cxt, const char *tg
 	 */
 	if (mnt_context_is_restricted(cxt)
 	    || *tgt != '/'
-	    || (cxt->flags & MNT_FL_HELPER)
+	    || mnt_context_within_helper(cxt)
 	    || mnt_context_mtab_writable(cxt)
 	    || mnt_context_is_force(cxt)
 	    || mnt_context_is_lazy(cxt)
