@@ -145,6 +145,26 @@ path_read_str(char *result, size_t len, const char *path, ...)
 		result[len - 1] = '\0';
 }
 
+/* like path_read_s32() but do not print any error message */
+int __path_read_s32(int *result, const char *path, ...)
+{
+	FILE *f;
+	va_list ap;
+	int rc;
+
+	va_start(ap, path);
+	f = path_vfopen("r" UL_CLOEXECSTR, 0, path, ap);
+	va_end(ap);
+
+	if (!f)
+		return -1;
+
+	rc = fscanf(f, "%d", result);
+	fclose(f);
+
+	return rc == 1 ? 0 : -1;
+}
+
 int
 path_read_s32(const char *path, ...)
 {

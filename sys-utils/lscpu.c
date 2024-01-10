@@ -1176,28 +1176,34 @@ static void
 read_max_mhz(struct lscpu_desc *desc, int idx)
 {
 	int num = real_cpu_num(desc, idx);
+	int mhz = 0;
 
 	if (!path_exist(_PATH_SYS_CPU "/cpu%d/cpufreq/cpuinfo_max_freq", num))
 		return;
+	if (__path_read_s32(&mhz, _PATH_SYS_CPU
+				"/cpu%d/cpufreq/cpuinfo_max_freq", num) != 0)
+		return;
+
 	if (!desc->maxmhz)
 		desc->maxmhz = xcalloc(desc->ncpuspos, sizeof(char *));
-	xasprintf(&(desc->maxmhz[idx]), "%.4f",
-		  (float)path_read_s32(_PATH_SYS_CPU
-				       "/cpu%d/cpufreq/cpuinfo_max_freq", num) / 1000);
+	xasprintf(&(desc->maxmhz[idx]), "%.4f", (float) mhz / 1000);
 }
 
 static void
 read_min_mhz(struct lscpu_desc *desc, int idx)
 {
 	int num = real_cpu_num(desc, idx);
+	int mhz = 0;
 
 	if (!path_exist(_PATH_SYS_CPU "/cpu%d/cpufreq/cpuinfo_min_freq", num))
 		return;
+	if (__path_read_s32(&mhz, _PATH_SYS_CPU
+				"/cpu%d/cpufreq/cpuinfo_min_freq", num) != 0)
+		return;
+
 	if (!desc->minmhz)
 		desc->minmhz = xcalloc(desc->ncpuspos, sizeof(char *));
-	xasprintf(&(desc->minmhz[idx]), "%.4f",
-		  (float)path_read_s32(_PATH_SYS_CPU
-				       "/cpu%d/cpufreq/cpuinfo_min_freq", num) / 1000);
+	xasprintf(&(desc->minmhz[idx]), "%.4f", (float) mhz / 1000);
 }
 
 static int
