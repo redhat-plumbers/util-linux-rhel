@@ -36,6 +36,7 @@
  * lock handler
  */
 struct libmnt_lock {
+	int	refcount;	/* reference counter */
 	char	*lockfile;	/* path to lock file (e.g. /etc/mtab~) */
 	char	*linkfile;	/* path to link file (e.g. /etc/mtab~.<id>) */
 	int	lockfile_fd;	/* lock file descriptor */
@@ -82,6 +83,7 @@ struct libmnt_lock *mnt_new_lock(const char *datafile, pid_t id)
 	if (!ml)
 		goto err;
 
+	ml->refcount = 1;
 	ml->lockfile_fd = -1;
 	ml->linkfile = ln;
 	ml->lockfile = lo;
@@ -100,16 +102,55 @@ err:
  * mnt_free_lock:
  * @ml: struct libmnt_lock handler
  *
- * Deallocates mnt_lock.
+ * Deallocates libmnt_lock. This function does not care about reference count. Don't
+ * use this function directly -- it's better to use mnt_unref_lock().
+ *
+ * The reference counting is supported since util-linux v2.40.
  */
 void mnt_free_lock(struct libmnt_lock *ml)
 {
 	if (!ml)
 		return;
-	DBG(LOCKS, ul_debugobj(ml, "free%s", ml->locked ? " !!! LOCKED !!!" : ""));
+
+	DBG(LOCKS, ul_debugobj(ml, "free%s [refcount=%d]",
+					ml->locked ? " !!! LOCKED !!!" : "",
+					ml->refcount));
 	free(ml->lockfile);
 	free(ml->linkfile);
 	free(ml);
+}
+
+/**
+ * mnt_ref_lock:
+ * @ml: lock pointer
+ *
+ * Increments reference counter.
+ *
+ * Since: 2.40
+ */
+void mnt_ref_lock(struct libmnt_lock *ml)
+{
+	if (ml) {
+		ml->refcount++;
+		/*DBG(FS, ul_debugobj(fs, "ref=%d", ml->refcount));*/
+	}
+}
+
+/**
+ * mnt_unref_lock:
+ * @ml: lock pointer
+ *
+ * De-increments reference counter, on zero the @ml is automatically
+ * deallocated by mnt_free_lock).
+ */
+void mnt_unref_lock(struct libmnt_lock *ml)
+{
+	if (ml) {
+		ml->refcount--;
+		/*DBG(FS, ul_debugobj(fs, "unref=%d", ml->refcount));*/
+		if (ml->refcount <= 0)
+			mnt_free_lock(ml);
+	}
 }
 
 /**
@@ -620,7 +661,7 @@ static void clean_lock(void)
 	if (!lock)
 		return;
 	mnt_unlock_file(lock);
-	mnt_free_lock(lock);
+	mnt_unref_lock(lock);
 }
 
 static void __attribute__((__noreturn__)) sig_handler(int sig)
@@ -700,7 +741,7 @@ static int test_lock(struct libmnt_test *ts, int argc, char *argv[])
 		increment_data(datafile, verbose, l);
 
 		mnt_unlock_file(lock);
-		mnt_free_lock(lock);
+		mnt_unref_lock(lock);
 		lock = NULL;
 
 		/* The mount command usually finishes after a mtab update. We

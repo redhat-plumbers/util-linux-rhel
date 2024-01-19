@@ -101,9 +101,8 @@ void mnt_free_context(struct libmnt_context *cxt)
 	mnt_unref_cache(cxt->cache);
 	mnt_unref_fs(cxt->fs);
 	mnt_unref_fs(cxt->fs_template);
-
 	mnt_context_clear_loopdev(cxt);
-	mnt_free_lock(cxt->lock);
+	mnt_unref_lock(cxt->lock);
 	mnt_free_update(cxt->update);
 
 	mnt_context_set_target_ns(cxt, NULL);

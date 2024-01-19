@@ -361,3 +361,11 @@ MOUNT_2_37 {
 	mnt_fs_get_vfs_options_all;
 	mnt_table_over_fs;
 } MOUNT_2_35;
+
+/*
+ * Backport from v2.40 to RHEL 
+ */
+MOUNT_2_40 {
+	mnt_ref_lock;
+	mnt_unref_lock;
+} MOUNT_2_37;
