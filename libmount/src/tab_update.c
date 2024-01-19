@@ -42,6 +42,7 @@ struct libmnt_update {
 			missing_options : 1;
 
 	struct libmnt_table *mountinfo;
+	struct libmnt_lock  *lock;
 };
 
 static int set_fs_root(struct libmnt_update *upd, struct libmnt_fs *fs, unsigned long mountflags);
@@ -77,6 +78,7 @@ void mnt_free_update(struct libmnt_update *upd)
 
 	DBG(UPDATE, ul_debugobj(upd, "free"));
 
+	mnt_unref_lock(upd->lock);
 	mnt_unref_fs(upd->fs);
 	mnt_unref_table(upd->mountinfo);
 	free(upd->target);
@@ -691,18 +693,18 @@ static int add_file_entry(struct libmnt_table *tb, struct libmnt_update *upd)
 	return update_table(upd, tb);
 }
 
-static int update_add_entry(struct libmnt_update *upd, struct libmnt_lock *lc)
+static int update_add_entry(struct libmnt_update *upd)
 {
 	struct libmnt_table *tb;
 	int rc = 0;
 
 	assert(upd);
 	assert(upd->fs);
+	assert(upd->lock);
 
 	DBG(UPDATE, ul_debugobj(upd, "%s: add entry", upd->filename));
 
-	if (lc)
-		rc = mnt_lock_file(lc);
+	rc = mnt_lock_file(upd->lock);
 	if (rc)
 		return -MNT_ERR_LOCK;
 
@@ -710,25 +712,24 @@ static int update_add_entry(struct libmnt_update *upd, struct libmnt_lock *lc)
 			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB, 1);
 	if (tb)
 		rc = add_file_entry(tb, upd);
-	if (lc)
-		mnt_unlock_file(lc);
 
+	mnt_unlock_file(upd->lock);
 	mnt_unref_table(tb);
 	return rc;
 }
 
-static int update_remove_entry(struct libmnt_update *upd, struct libmnt_lock *lc)
+static int update_remove_entry(struct libmnt_update *upd)
 {
 	struct libmnt_table *tb;
 	int rc = 0;
 
 	assert(upd);
 	assert(upd->target);
+	assert(upd->lock);
 
 	DBG(UPDATE, ul_debugobj(upd, "%s: remove entry", upd->filename));
 
-	if (lc)
-		rc = mnt_lock_file(lc);
+	rc = mnt_lock_file(upd->lock);
 	if (rc)
 		return -MNT_ERR_LOCK;
 
@@ -741,23 +742,22 @@ static int update_remove_entry(struct libmnt_update *upd, struct libmnt_lock *lc
 			rc = update_table(upd, tb);
 		}
 	}
-	if (lc)
-		mnt_unlock_file(lc);
 
+	mnt_unlock_file(upd->lock);
 	mnt_unref_table(tb);
 	return rc;
 }
 
-static int update_modify_target(struct libmnt_update *upd, struct libmnt_lock *lc)
+static int update_modify_target(struct libmnt_update *upd)
 {
 	struct libmnt_table *tb = NULL;
 	int rc = 0;
 
 	assert(upd);
+	assert(upd->lock);
 	DBG(UPDATE, ul_debugobj(upd, "%s: modify target", upd->filename));
 
-	if (lc)
-		rc = mnt_lock_file(lc);
+	rc = mnt_lock_file(upd->lock);
 	if (rc)
 		return -MNT_ERR_LOCK;
 
@@ -773,15 +773,13 @@ static int update_modify_target(struct libmnt_update *upd, struct libmnt_lock *l
 		}
 	}
 
-	if (lc)
-		mnt_unlock_file(lc);
-
+	mnt_unlock_file(upd->lock);
 	mnt_unref_table(tb);
 	return rc;
 }
 
 /* replaces option in the table entry by new options from @udp */
-static int update_modify_options(struct libmnt_update *upd, struct libmnt_lock *lc)
+static int update_modify_options(struct libmnt_update *upd)
 {
 	struct libmnt_table *tb = NULL;
 	int rc = 0;
@@ -789,13 +787,13 @@ static int update_modify_options(struct libmnt_update *upd, struct libmnt_lock *
 
 	assert(upd);
 	assert(upd->fs);
+	assert(upd->lock);
 
 	DBG(UPDATE, ul_debugobj(upd, "%s: modify options", upd->filename));
 
 	fs = upd->fs;
 
-	if (lc)
-		rc = mnt_lock_file(lc);
+	rc = mnt_lock_file(upd->lock);
 	if (rc)
 		return -MNT_ERR_LOCK;
 
@@ -816,15 +814,13 @@ static int update_modify_options(struct libmnt_update *upd, struct libmnt_lock *
 			rc = add_file_entry(tb, upd);	/* not found, add new */
 	}
 
-	if (lc)
-		mnt_unlock_file(lc);
-
+	mnt_unlock_file(upd->lock);
 	mnt_unref_table(tb);
 	return rc;
 }
 
 /* add user options missing in the table entry by new options from @udp */
-static int update_add_options(struct libmnt_update *upd, struct libmnt_lock *lc)
+static int update_add_options(struct libmnt_update *upd)
 {
 	struct libmnt_table *tb = NULL;
 	int rc = 0;
@@ -832,6 +828,7 @@ static int update_add_options(struct libmnt_update *upd, struct libmnt_lock *lc)
 
 	assert(upd);
 	assert(upd->fs);
+	assert(upd->lock);
 
 	if (!upd->fs->user_optstr)
 		return 0;
@@ -840,8 +837,7 @@ static int update_add_options(struct libmnt_update *upd, struct libmnt_lock *lc)
 
 	fs = upd->fs;
 
-	if (lc)
-		rc = mnt_lock_file(lc);
+	rc = mnt_lock_file(upd->lock);
 	if (rc)
 		return -MNT_ERR_LOCK;
 
@@ -867,12 +863,31 @@ static int update_add_options(struct libmnt_update *upd, struct libmnt_lock *lc)
 			rc = add_file_entry(tb, upd);	/* not found, add new */
 	}
 
-	if (lc)
-		mnt_unlock_file(lc);
-
+	mnt_unlock_file(upd->lock);
 	mnt_unref_table(tb);
 	return rc;
 
+}
+
+static int update_init_lock(struct libmnt_update *upd, struct libmnt_lock *lc)
+{
+	assert(upd);
+
+	if (lc) {
+		mnt_unref_lock(upd->lock);
+		mnt_ref_lock(lc);
+		upd->lock = lc;
+	} else if (!upd->lock) {
+		upd->lock = mnt_new_lock(upd->filename, 0);
+		if (!upd->lock)
+			return -ENOMEM;
+		mnt_lock_block_signals(upd->lock, TRUE);
+	}
+
+	if (upd->userspace_only)
+		mnt_lock_use_simplelock(upd->lock, TRUE);	/* use flock */
+
+	return 0;
 }
 
 /**
@@ -891,7 +906,6 @@ static int update_add_options(struct libmnt_update *upd, struct libmnt_lock *lc)
  */
 int mnt_update_table(struct libmnt_update *upd, struct libmnt_lock *lc)
 {
-	struct libmnt_lock *lc0 = lc;
 	int rc = -EINVAL;
 
 	if (!upd || !upd->filename)
@@ -903,37 +917,32 @@ int mnt_update_table(struct libmnt_update *upd, struct libmnt_lock *lc)
 	if (upd->fs) {
 		DBG(UPDATE, mnt_fs_print_debug(upd->fs, stderr));
 	}
-	if (!lc) {
-		lc = mnt_new_lock(upd->filename, 0);
-		if (lc)
-			mnt_lock_block_signals(lc, TRUE);
-	}
-	if (lc && upd->userspace_only)
-		mnt_lock_use_simplelock(lc, TRUE);	/* use flock */
+
+	rc = update_init_lock(upd, lc);
+	if (rc)
+		goto done;
 
 	if (!upd->fs && upd->target)
-		rc = update_remove_entry(upd, lc);	/* umount */
+		rc = update_remove_entry(upd);		/* umount */
 	else if (upd->mountflags & MS_MOVE)
-		rc = update_modify_target(upd, lc);	/* move */
+		rc = update_modify_target(upd);		/* move */
 	else if (upd->mountflags & MS_REMOUNT)
-		rc = update_modify_options(upd, lc);	/* remount */
+		rc = update_modify_options(upd);	/* remount */
 	else if (upd->fs && upd->missing_options)
-		rc = update_add_options(upd, lc);	/* mount by externel helper */
+		rc = update_add_options(upd);		/* mount by externel helper */
 	else if (upd->fs)
-		rc = update_add_entry(upd, lc);		/* mount */
+		rc = update_add_entry(upd);		/* mount */
 
 	upd->ready = 1;
+done:
 	DBG(UPDATE, ul_debugobj(upd, "%s: update tab: done [rc=%d]",
 				upd->filename, rc));
-	if (lc != lc0)
-		 mnt_free_lock(lc);
 	return rc;
 }
 
-int mnt_update_already_done(struct libmnt_update *upd, struct libmnt_lock *lc)
+int mnt_update_already_done(struct libmnt_update *upd)
 {
 	struct libmnt_table *tb = NULL;
-	struct libmnt_lock *lc0 = lc;
 	int rc = 0;
 
 	if (!upd || !upd->filename || (!upd->fs && !upd->target))
@@ -941,25 +950,8 @@ int mnt_update_already_done(struct libmnt_update *upd, struct libmnt_lock *lc)
 
 	DBG(UPDATE, ul_debugobj(upd, "%s: checking for previous update", upd->filename));
 
-	if (!lc) {
-		lc = mnt_new_lock(upd->filename, 0);
-		if (lc)
-			mnt_lock_block_signals(lc, TRUE);
-	}
-	if (lc && upd->userspace_only)
-		mnt_lock_use_simplelock(lc, TRUE);	/* use flock */
-	if (lc) {
-		rc = mnt_lock_file(lc);
-		if (rc) {
-			rc = -MNT_ERR_LOCK;
-			goto done;
-		}
-	}
-
 	tb = __mnt_new_table_from_file(upd->filename,
 			upd->userspace_only ? MNT_FMT_UTAB : MNT_FMT_MTAB, 1);
-	if (lc)
-		mnt_unlock_file(lc);
 	if (!tb)
 		goto done;
 
@@ -996,8 +988,6 @@ int mnt_update_already_done(struct libmnt_update *upd, struct libmnt_lock *lc)
 
 	mnt_unref_table(tb);
 done:
-	if (lc && lc != lc0)
-		mnt_free_lock(lc);
 	DBG(UPDATE, ul_debugobj(upd, "%s: previous update check done [rc=%d]",
 				upd->filename, rc));
 	return rc;
