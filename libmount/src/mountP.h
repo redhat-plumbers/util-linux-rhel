@@ -478,6 +478,8 @@ extern int mnt_update_set_filename(struct libmnt_update *upd,
 				   const char *filename, int userspace_only);
 extern int mnt_update_emit_event(struct libmnt_update *upd);
 extern int mnt_update_already_done(struct libmnt_update *upd);
+extern int mnt_update_start(struct libmnt_update *upd);
+extern int mnt_update_end(struct libmnt_update *upd);
 
 #if __linux__
 /* btrfs.c */
