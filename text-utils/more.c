@@ -1343,7 +1343,7 @@ static void read_line(struct more_control *ctl)
 }
 
 /* returns: 0 timeout or nothing; <0 error, >0 success */
-static int more_poll(struct more_control *ctl, int timeout)
+static int more_poll(struct more_control *ctl, int timeout, int *stderr_active)
 {
 	enum {
 		POLLFD_SIGNAL = 0,
@@ -1356,6 +1356,9 @@ static int more_poll(struct more_control *ctl, int timeout)
 		[POLLFD_STDERR] = { .fd = STDERR_FILENO, .events = POLLIN | POLLERR | POLLHUP }
 	};
 	int has_data = 0;
+
+	if (stderr_active)
+		*stderr_active = 0;
 
 	while (!has_data) {
 		int rc;
@@ -1423,8 +1426,11 @@ static int more_poll(struct more_control *ctl, int timeout)
 		}
 
 		/* event on stderr (we reads user commands from stderr!) */
-		if (pfd[POLLFD_STDERR].revents)
+		if (pfd[POLLFD_STDERR].revents) {
 			has_data++;
+			if (stderr_active)
+				*stderr_active = 1;
+		}
 	}
 
 	return has_data;
@@ -1495,7 +1501,7 @@ static void search(struct more_control *ctl, char buf[], int n)
 			}
 			break;
 		}
-		more_poll(ctl, 0);
+		more_poll(ctl, 0, NULL);
 	}
 	/* Move ctrl+c signal handling back to more_key_command(). */
 	signal(SIGINT, SIG_DFL);
@@ -1649,7 +1655,7 @@ static int skip_forwards(struct more_control *ctl, int nlines, cc_t comchar)
 static int more_key_command(struct more_control *ctl, char *filename)
 {
 	int retval = 0;
-	int done = 0, search_again = 0;
+	int done = 0, search_again = 0, stderr_active = 0;
 	char cmdbuf[INIT_BUF];
 	struct number_command cmd;
 
@@ -1659,7 +1665,9 @@ static int more_key_command(struct more_control *ctl, char *filename)
 		ctl->report_errors = 0;
 	ctl->search_called = 0;
 	for (;;) {
-		if (more_poll(ctl, -1) <= 0)
+		if (more_poll(ctl, -1, &stderr_active) <= 0)
+			continue;
+		if (stderr_active == 0)
 			continue;
 		cmd = read_command(ctl);
 		if (cmd.key == more_kc_unknown_command)
