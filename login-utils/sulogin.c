@@ -185,6 +185,7 @@ static void tcinit(struct console *con)
 		}
 
 		setlocale(LC_CTYPE, "POSIX");
+		setlocale(LC_MESSAGES, "POSIX");
 		goto setattr;
 	}
 #if defined(IUTF8) && defined(KDGKBMODE)
@@ -199,10 +200,12 @@ static void tcinit(struct console *con)
 	case K_XLATE:
 	default:
 		setlocale(LC_CTYPE, "POSIX");
+		setlocale(LC_MESSAGES, "POSIX");
 		break;
 	}
 #else
 	setlocale(LC_CTYPE, "POSIX");
+	setlocale(LC_MESSAGES, "POSIX");
 #endif
 	reset_virtual_console(tio, flags);
 setattr:
