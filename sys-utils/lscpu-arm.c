@@ -102,6 +102,14 @@ static const struct id_part arm_part[] = {
     { 0xd80, "Cortex-A520" },
     { 0xd81, "Cortex-A720" },
     { 0xd82, "Cortex-X4" },
+    { 0xd83, "Neoverse-V3AE" },
+    { 0xd84, "Neoverse-V3" },
+    { 0xd85, "Cortex-X925" },
+    { 0xd87, "Cortex-A725" },
+    { 0xd88, "Cortex-A520AE" },
+    { 0xd89, "Cortex-A720AE" },
+    { 0xd8e, "Neoverse-N3" },
+    { 0xd8f, "Cortex-A320" },
     { -1, "unknown" },
 };
 
@@ -171,6 +179,7 @@ static const struct id_part nvidia_part[] = {
     { 0x000, "Denver" },
     { 0x003, "Denver 2" },
     { 0x004, "Carmel" },
+    { 0x010, "Olympus" },
     { -1, "unknown" },
 };
 
@@ -254,12 +263,15 @@ static const struct id_part intel_part[] = {
 
 static const struct id_part fujitsu_part[] = {
     { 0x001, "A64FX" },
+    { 0x003, "MONAKA" },
     { -1, "unknown" },
 };
 
 static const struct id_part hisi_part[] = {
-    { 0xd01, "Kunpeng-920" },	/* aka tsv110 */
+    { 0xd01, "TaiShan-v110" },	/* used in Kunpeng-920 SoC */
+    { 0xd02, "TaiShan-v120" },	/* used in Kirin 990A and 9000S SoCs */
     { 0xd40, "Cortex-A76" },	/* HiSilicon uses this ID though advertises A76 */
+    { 0xd41, "Cortex-A77" },	/* HiSilicon uses this ID though advertises A77 */
     { -1, "unknown" },
 };
 
@@ -270,10 +282,18 @@ static const struct id_part ampere_part[] = {
 };
 
 static const struct id_part ft_part[] = {
+    { 0x303, "FTC310" },
     { 0x660, "FTC660" },
     { 0x661, "FTC661" },
     { 0x662, "FTC662" },
     { 0x663, "FTC663" },
+    { 0x664, "FTC664" },
+    { 0x862, "FTC862" },
+    { -1, "unknown" },
+};
+
+static const struct id_part ms_part[] = {
+    { 0xd49, "Azure-Cobalt-100" },
     { -1, "unknown" },
 };
 
@@ -304,6 +324,7 @@ static const struct hw_impl hw_implementer[] = {
     { 0x61, apple_part,   "Apple" },
     { 0x66, faraday_part, "Faraday" },
     { 0x69, intel_part,   "Intel" },
+    { 0x6d, ms_part,      "Microsoft" },
     { 0x70, ft_part,      "Phytium" },
     { 0xc0, ampere_part,  "Ampere" },
     { -1,   unknown_part, "unknown" },
