@@ -188,6 +188,8 @@ The *user* mount option is accepted if no username is specified. If used in the 
 
 For unprivileged users the mount target from _fstab_ is opened before the filesystem is attached and the mount operation uses this file descriptor rather than the path, so the path is not resolved for the second time by the kernel. Symbolic links are not followed in the target path at all, a _fstab_ entry with a symbolic link in the mount point path is unusable for unprivileged users and the mount fails.
 
+The mount source is not canonicalized for unprivileged users, with the exception of paths in _/dev/_ where the canonicalization is necessary for symbolic links like _/dev/cdrom_ and where the result has to stay in _/dev/_. All other sources are used exactly as written in _fstab_ and symbolic links in them are rejected when the path is opened. This applies namely to the source of a *bind* or *move* operation, which is pinned by a file descriptor in the same way as the target.
+
 WARNING: When the new mount API is not available (Linux before 5.2, or *mount*(8) compiled without the support for it), the legacy *mount*(2) syscall is used. In this case the pinned target is referenced by a _/proc/self/fd/_ path, which requires a mounted _/proc_ filesystem. Without _/proc_ the target path is resolved by the kernel again and the inherent time-of-check-to-time-of-use (TOCTOU) window between the verification and the mount operation remains; if an ancestor directory of the mount target is writable by the unprivileged user, a path component could be swapped to redirect the mount to an unintended location. Administrators should ensure that mount target paths for *user* mounts do not traverse directories writable by unprivileged users.
 
 === Bind mount operation

@@ -1926,7 +1926,9 @@ int mnt_context_open_tree(struct libmnt_context *cxt, const char *path, unsigned
 	DBG(CXT, ul_debugobj(cxt, "open_tree(path=%s%s%s)", path,
 				oflg & OPEN_TREE_CLONE ? " clone" : "",
 				oflg & AT_RECURSIVE ? " recursive" : ""));
-	fd = open_tree(AT_FDCWD, path, oflg);
+
+	fd = mnt_open_tree(AT_FDCWD, path, oflg,
+			mnt_context_is_restricted(cxt) ? RESOLVE_NO_SYMLINKS : 0);
 	set_syscall_status(cxt, "open_tree", fd >= 0);
 
 	return fd;
@@ -1989,7 +1991,22 @@ int mnt_context_prepare_srcpath(struct libmnt_context *cxt)
 		/*
 		 * Source is PATH (canonicalize)
 		 */
-		path = mnt_resolve_path(src, cache);
+		if (mnt_context_is_restricted(cxt)) {
+			/* In restricted mode, only canonicalize /dev/
+			 * paths (e.g. /dev/cdrom -> /dev/sr0) and verify
+			 * the result stays in /dev/. For non-/dev/ paths
+			 * (e.g. disk images in user dirs), keep the
+			 * original fstab path -- symlink protection is
+			 * handled at open time by RESOLVE_NO_SYMLINKS.
+			 */
+			if (startswith(src, "/dev/")) {
+				path = mnt_resolve_path(src, cache);
+				if (path && !startswith(path, "/dev/"))
+					path = NULL;
+			}
+		} else
+			path = mnt_resolve_path(src, cache);
+
 		if (path && strcmp(path, src) != 0)
 			rc = mnt_fs_set_source(cxt->fs, path);
 	 }
