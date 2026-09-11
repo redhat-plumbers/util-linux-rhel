@@ -596,6 +596,22 @@ static int is_success_status(struct libmnt_context *cxt)
 	return 0;
 }
 
+/* Check if the mount stage explicitly failed (helper or syscall returned
+ * an error). Unlike is_success_status(), this treats "nothing happened"
+ * as not-failed -- the MOUNT stage may be a no-op for operations like
+ * bind/move with the new mount API where open_tree() runs in PREP and
+ * move_mount() is deferred to MOUNT_POST. */
+static int is_mount_stage_failed(struct libmnt_context *cxt)
+{
+	if (mnt_context_helper_executed(cxt))
+		return mnt_context_get_helper_status(cxt) != 0;
+
+	if (mnt_context_syscall_called(cxt))
+		return mnt_context_get_status(cxt) != 1;
+
+	return 0;
+}
+
 /* try mount(2) for all items in comma separated list of the filesystem @types */
 static int do_mount_by_types(struct libmnt_context *cxt, const char *types)
 {
@@ -935,8 +951,9 @@ int mnt_context_do_mount(struct libmnt_context *cxt)
 	} else
 		res = do_mount_by_pattern(cxt, cxt->fstype_pattern);
 
-	/* after mount stage */
-	if (res == 0) {
+	/* after mount stage -- the post-mount hooks are commit-path only,
+	 * skip them if the mount helper or syscall has failed */
+	if (res == 0 && !is_mount_stage_failed(cxt)) {
 		rc = mnt_context_call_hooks(cxt, MNT_STAGE_MOUNT_POST);
 		if (rc)
 			return rc;
@@ -1119,7 +1136,7 @@ again:
 		}
 	}
 
-	if (rc == 0)
+	if (rc == 0 && !is_mount_stage_failed(cxt))
 		rc = mnt_context_call_hooks(cxt, MNT_STAGE_POST);
 
 	mnt_context_deinit_hooksets(cxt);
