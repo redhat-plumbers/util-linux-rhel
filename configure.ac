@@ -343,6 +343,7 @@ AC_CHECK_HEADERS([ \
 	linux/kcmp.h \
 	linux/net_namespace.h \
 	linux/nsfs.h \
+	linux/openat2.h \
 	linux/pr.h \
 	linux/raw.h \
 	linux/securebits.h \
