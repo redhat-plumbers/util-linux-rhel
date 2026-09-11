@@ -290,6 +290,16 @@ static int hook_mount_pre(
 	if (!hsd)
 		return 0;
 
+	/* The unshare + string-based move_mount() dance below is not safe for
+	 * restricted users; the safe variant (open the subdirectory directly
+	 * on the detached tree) needs Linux >= 6.15 and is not available in
+	 * this branch. */
+	if (mnt_context_target_fd_required(cxt)) {
+		DBG(HOOK, ul_debugobj(hs,
+			"subdir mount refused for non-root user"));
+		return -ENOTSUP;
+	}
+
 	/* create unhared temporary target */
 	hsd->org_target = strdup(mnt_fs_get_target(cxt->fs));
 	if (!hsd->org_target)
