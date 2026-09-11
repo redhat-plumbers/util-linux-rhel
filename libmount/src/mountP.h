@@ -105,6 +105,9 @@ extern int is_file_empty(const char *name);
 extern int mnt_is_readonly(const char *path)
 			__attribute__((nonnull));
 
+extern int mnt_id_from_fd(int fd, int *id);
+extern int mnt_id_from_path(const char *path, int *id);
+
 extern int mnt_parse_offset(const char *str, size_t len, uintmax_t *res);
 
 extern int mnt_chdir_to_parent(const char *target, char **filename);
@@ -443,6 +446,8 @@ struct libmnt_context
 	unsigned int	has_selinux_opt : 1;	/* temporary for broken fsconfig() syscall */
 	unsigned int    force_clone : 1;	/* OPEN_TREE_CLONE */
 
+	int		fd_target;	/* pinned target fd (RESOLVE_NO_SYMLINKS) */
+
 	struct list_head	hooksets_datas;	/* global hooksets data */
 	struct list_head	hooksets_hooks;	/* global hooksets data */
 };
@@ -612,6 +617,7 @@ extern int mnt_opt_is_sepnodata(struct libmnt_opt *opt);
 
 /* fs.c */
 extern int mnt_fs_follow_optlist(struct libmnt_fs *fs, struct libmnt_optlist *ol);
+extern int mnt_fs_fetch_ids(struct libmnt_fs *fs, int fd);
 extern struct libmnt_fs *mnt_copy_mtab_fs(struct libmnt_fs *fs);
 extern int __mnt_fs_set_source_ptr(struct libmnt_fs *fs, char *source)
 			__attribute__((nonnull(1)));
@@ -639,6 +645,11 @@ extern int mnt_context_prepare_helper(struct libmnt_context *cxt,
 extern int mnt_context_prepare_update(struct libmnt_context *cxt);
 extern int mnt_context_merge_mflags(struct libmnt_context *cxt);
 extern int mnt_context_update_tabs(struct libmnt_context *cxt);
+
+extern int mnt_context_target_fd_required(struct libmnt_context *cxt);
+extern int mnt_context_get_target_fd(struct libmnt_context *cxt);
+extern void mnt_context_close_target_fd(struct libmnt_context *cxt);
+extern int mnt_context_finalize_target(struct libmnt_context *cxt);
 
 extern int mnt_context_umount_setopt(struct libmnt_context *cxt, int c, char *arg);
 extern int mnt_context_mount_setopt(struct libmnt_context *cxt, int c, char *arg);

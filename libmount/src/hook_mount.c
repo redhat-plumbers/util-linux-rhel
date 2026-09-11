@@ -322,21 +322,10 @@ static int hook_create_mount(struct libmnt_context *cxt,
 		/* cleanup after fail (libmount may only try the FS type) */
 		close_sysapi_fds(api);
 
-#if defined(HAVE_STATX) && defined(HAVE_STRUCT_STATX) && defined(HAVE_STRUCT_STATX_STX_MNT_ID)
-	if (!rc && cxt->fs) {
-		struct statx st;
-
-		rc = statx(api->fd_tree, "", AT_EMPTY_PATH, STATX_MNT_ID, &st);
-		if (rc == 0) {
-			cxt->fs->id = (int) st.stx_mnt_id;
-			if (cxt->update) {
-				struct libmnt_fs *fs = mnt_update_get_fs(cxt->update);
-				if (fs)
-					fs->id = cxt->fs->id;
-			}
-		}
-	}
-#endif
+	/* Read the ID of the new mount while it's still detached, see
+	 * mnt_context_finalize_target() which stores it to utab. */
+	if (!rc && cxt->fs)
+		mnt_fs_fetch_ids(cxt->fs, api->fd_tree);
 
 done:
 	DBG(HOOK, ul_debugobj(hs, "create FS done [rc=%d, id=%d]", rc, cxt->fs ? cxt->fs->id : -1));
@@ -542,10 +531,26 @@ static int hook_attach_target(struct libmnt_context *cxt,
 		umount2(target, MNT_DETACH);
 	}
 
-	rc = move_mount(api->fd_tree, "", AT_FDCWD, target, MOVE_MOUNT_F_EMPTY_PATH);
+	/* fd_target is open in restricted mode (see prepare_target()) */
+	if (mnt_context_target_fd_required(cxt)) {
+		int fd = mnt_context_get_target_fd(cxt);
+
+		if (fd < 0)
+			return -errno;
+		rc = move_mount(api->fd_tree, "", fd, "",
+				MOVE_MOUNT_F_EMPTY_PATH | MOVE_MOUNT_T_EMPTY_PATH);
+	} else
+		rc = move_mount(api->fd_tree, "", AT_FDCWD, target,
+				MOVE_MOUNT_F_EMPTY_PATH);
+
 	hookset_set_syscall_status(cxt, "move_mount", rc == 0);
 
-	return rc == 0 ? 0 : -errno;
+	if (rc != 0)
+		return -errno;
+
+	/* re-open to point to the mounted filesystem root and read the mount
+	 * ID for utab; the function already returns a negative error code */
+	return mnt_context_finalize_target(cxt);
 }
 
 static inline int fsopen_is_supported(void)
