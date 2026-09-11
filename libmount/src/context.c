@@ -37,6 +37,7 @@
  */
 
 #include "mountP.h"
+#include "fileutils.h"
 #include "strutils.h"
 #include "namespace.h"
 #include "match.h"
@@ -67,6 +68,7 @@ struct libmnt_context *mnt_new_context(void)
 	cxt->ns_orig.fd = -1;
 	cxt->ns_tgt.fd = -1;
 	cxt->ns_cur = &cxt->ns_orig;
+	cxt->fd_target = -1;
 
 	cxt->map_linux = mnt_get_builtin_optmap(MNT_LINUX_MAP);
 	cxt->map_userspace = mnt_get_builtin_optmap(MNT_USERSPACE_MAP);
@@ -173,6 +175,7 @@ int mnt_reset_context(struct libmnt_context *cxt)
 	cxt->map_userspace = mnt_get_builtin_optmap(MNT_USERSPACE_MAP);
 
 	mnt_context_reset_status(cxt);
+	mnt_context_close_target_fd(cxt);
 	mnt_context_deinit_hooksets(cxt);
 
 	if (cxt->table_fltrcb)
@@ -396,6 +399,105 @@ static int set_flag(struct libmnt_context *cxt, int flag, int enable)
 int mnt_context_is_restricted(struct libmnt_context *cxt)
 {
 	return cxt->restricted;
+}
+
+int mnt_context_target_fd_required(struct libmnt_context *cxt)
+{
+	return mnt_context_is_restricted(cxt);
+}
+
+/* re-open the pinned target, see mnt_context_finalize_target() */
+static int reopen_target_fd(struct libmnt_context *cxt)
+{
+	DBG(CXT, ul_debugobj(cxt,"reopen target fd"));
+
+	mnt_context_close_target_fd(cxt);
+	if (mnt_context_get_target_fd(cxt) < 0)
+		return -errno;
+
+	return 0;
+}
+
+/* store the mount ID to the utab entry, see mnt_context_finalize_target() */
+static int update_mount_ids(struct libmnt_context *cxt)
+{
+	struct libmnt_fs *fs;
+
+	if (!cxt->fs)
+		return 0;
+
+	/* The ID is known when the new mount API has been used, the kernel
+	 * gives us a FD to the not yet attached mount. Classic mount(2) and
+	 * external mount helpers provide no such handle, so read the ID from
+	 * the new mount point (cxt->fd_target, or the target path if the FD is
+	 * not pinned). Note that this is not 100% robust -- another process
+	 * could overmount the target in the meantime. */
+	if (cxt->fs->id <= 0)
+		mnt_fs_fetch_ids(cxt->fs, cxt->fd_target);
+
+	if (!cxt->fs->id)
+		return 0;
+	if (!cxt->update || !mnt_update_is_ready(cxt->update))
+		return 0;
+
+	fs = mnt_update_get_fs(cxt->update);
+	if (fs)
+		fs->id = cxt->fs->id;
+
+	return 0;
+}
+
+/*
+ * Called by the mount code when the filesystem has been attached to the
+ * target.
+ *
+ * For non-root users it re-opens the pinned target FD, so it refers to the
+ * root of the new mount rather than to the directory covered by the mount.
+ *
+ * It also reads the mount ID when the mount operation has not provided it,
+ * and stores the ID to the utab entry.
+ */
+int mnt_context_finalize_target(struct libmnt_context *cxt)
+{
+	int rc = 0;
+
+	assert(cxt);
+
+	if (mnt_context_target_fd_required(cxt))
+		rc = reopen_target_fd(cxt);
+	if (rc == 0)
+		rc = update_mount_ids(cxt);
+
+	return rc;
+}
+
+int mnt_context_get_target_fd(struct libmnt_context *cxt)
+{
+	assert(cxt);
+
+	if (cxt->fd_target < 0) {
+		const char *target = mnt_fs_get_target(cxt->fs);
+
+		if (!target) {
+			/* keep errno usable for callers which use -errno */
+			errno = EINVAL;
+			return -EINVAL;
+		}
+		cxt->fd_target = ul_open_no_symlinks(target,
+					O_PATH | O_CLOEXEC, 0);
+		DBG(CXT, ul_debugobj(cxt,"open target fd=%d [%s]",
+					cxt->fd_target, target));
+	}
+	return cxt->fd_target;
+}
+
+void mnt_context_close_target_fd(struct libmnt_context *cxt)
+{
+	assert(cxt);
+
+	if (cxt->fd_target >= 0)
+		close(cxt->fd_target);
+	cxt->fd_target = -1;
 }
 
 /**

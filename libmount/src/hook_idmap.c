@@ -26,6 +26,7 @@
 #include "all-io.h"
 #include "namespace.h"
 #include "mount-api-utils.h"
+#include "fileutils.h"
 
 #include "mountP.h"
 
@@ -349,10 +350,55 @@ static int hook_mount_post(
 
 	/* Attach the idmapped mount. */
 	if (is_private) {
-		/* Unmount the old, non-idmapped mount we just cloned and idmapped. */
-		umount2(target, MNT_DETACH);
+		unsigned int mmflags = MOVE_MOUNT_F_EMPTY_PATH;
 
-		rc = move_mount(fd_tree, "", -1, target, MOVE_MOUNT_F_EMPTY_PATH);
+		/* Unmount the old, non-idmapped mount we just cloned and
+		 * idmapped, and attach the clone to the target. */
+		if (mnt_context_target_fd_required(cxt)) {
+			char fdpath[UL_FDPATH_BUFSIZ];
+			int fd_tgt = mnt_context_get_target_fd(cxt);
+
+			if (fd_tgt < 0) {
+				rc = -errno;
+				goto done;
+			}
+
+			/* The pinned FD refers to the root of the mount we are
+			 * going to detach, so umount2() through the FD rather
+			 * than resolve the target path for the second time.
+			 * See reopen_target_fd() for the umount2() lookup
+			 * semantics. */
+			if (ul_fd_mkpath(fdpath, sizeof(fdpath), fd_tgt))
+				umount2(fdpath, MNT_DETACH);
+			else
+				umount2(target, MNT_DETACH);
+
+			/* The FD now points into the detached mount and
+			 * move_mount() would fail with ENOENT, re-open it to
+			 * get the mount point directory again. */
+			mnt_context_close_target_fd(cxt);
+			fd_tgt = mnt_context_get_target_fd(cxt);
+			if (fd_tgt < 0) {
+				rc = -errno;
+				goto done;
+			}
+
+			mmflags |= MOVE_MOUNT_T_EMPTY_PATH;
+			rc = move_mount(fd_tree, "", fd_tgt, "", mmflags);
+		} else {
+			umount2(target, MNT_DETACH);
+			rc = move_mount(fd_tree, "", AT_FDCWD, target, mmflags);
+		}
+
+		if (rc == 0) {
+			/* The mount at the target is the idmapped clone now.
+			 * The ID of the mount we have just replaced is obsolete,
+			 * read the new one from the clone so utab refers to the
+			 * mount which is really attached. */
+			mnt_fs_fetch_ids(cxt->fs, fd_tree);
+
+			rc = mnt_context_finalize_target(cxt);
+		}
 		if (rc)
 			DBG(HOOK, ul_debugobj(hs, " failed to set move mount"));
 	}

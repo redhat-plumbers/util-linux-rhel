@@ -1367,6 +1367,32 @@ int mnt_fs_get_id(struct libmnt_fs *fs)
 	return fs ? fs->id : -EINVAL;
 }
 
+/*
+ * Fetch the mount ID from kernel via statx(). Uses @fd (AT_EMPTY_PATH) if >= 0,
+ * otherwise uses fs->target path.
+ *
+ * Returns: 0 on success, <0 on error.
+ */
+int mnt_fs_fetch_ids(struct libmnt_fs *fs, int fd)
+{
+	int id = 0, rc;
+
+	if (!fs)
+		return -EINVAL;
+	if (fd < 0 && !mnt_fs_get_target(fs))
+		return -EINVAL;
+
+	if (fd >= 0)
+		rc = mnt_id_from_fd(fd, &id);
+	else
+		rc = mnt_id_from_path(mnt_fs_get_target(fs), &id);
+
+	if (rc == 0)
+		fs->id = id;
+
+	return rc;
+}
+
 /**
  * mnt_fs_get_parent_id:
  * @fs: /proc/self/mountinfo entry

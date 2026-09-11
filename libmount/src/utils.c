@@ -266,6 +266,44 @@ int mnt_is_readonly(const char *path)
 	return 0;
 }
 
+#if defined(HAVE_STATX) && defined(HAVE_STRUCT_STATX) && defined(HAVE_STRUCT_STATX_STX_MNT_ID)
+static int get_mnt_id(	int fd, const char *path, int *id)
+{
+	int rc;
+	struct statx sx = { 0 };
+	int flags = AT_STATX_DONT_SYNC | AT_NO_AUTOMOUNT;
+
+	if (!path || !*path)
+		flags |= AT_EMPTY_PATH;
+
+	rc = statx(fd, path ? path : "", flags, STATX_MNT_ID, &sx);
+	if (rc)
+		return rc;
+
+	*id = sx.stx_mnt_id;
+	return 0;
+}
+#else /* HAVE_STATX && HAVE_STRUCT_STATX && HAVE_STRUCT_STATX_STX_MNT_ID */
+static int get_mnt_id(	int fd __attribute__((__unused__)),
+			const char *path __attribute__((__unused__)),
+			int *id __attribute__((__unused__)))
+{
+	return -ENOSYS;
+}
+#endif
+
+/* Converts open file descriptor to the classic mount ID (STATX_MNT_ID) */
+int mnt_id_from_fd(int fd, int *id)
+{
+	return get_mnt_id(fd, NULL, id);
+}
+
+/* Converts @path to the classic mount ID (STATX_MNT_ID) */
+int mnt_id_from_path(const char *path, int *id)
+{
+	return get_mnt_id(-1, path, id);
+}
+
 /**
  * mnt_mangle:
  * @str: string
