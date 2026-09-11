@@ -32,6 +32,7 @@
 #include "statfs_magic.h"
 #include "sysfs.h"
 #include "namespace.h"
+#include "mount-api-utils.h"
 
 /*
  * Return 1 if the file is not accessible or empty
@@ -1326,6 +1327,34 @@ done:
 
 	return 1;
 }
+
+#ifdef USE_LIBMOUNT_MOUNTFD_SUPPORT
+/*
+ * Open a mount tree, optionally pinning the path with openat2() first.
+ *
+ * When @resolve is non-zero, the path is resolved with openat2() using the
+ * given resolve flags, then the tree is opened with open_tree(AT_EMPTY_PATH).
+ * When @resolve is zero, open_tree() is called directly with the path.
+ */
+int mnt_open_tree(int dirfd, const char *path, unsigned long flags,
+		  unsigned long long resolve)
+{
+	if (resolve) {
+		int pin_fd, fd;
+
+		pin_fd = ul_openat_resolve(dirfd, path,
+					O_PATH | O_CLOEXEC, 0, resolve);
+		if (pin_fd < 0)
+			return pin_fd;
+
+		fd = open_tree(pin_fd, "", flags | AT_EMPTY_PATH);
+		close(pin_fd);
+		return fd;
+	}
+
+	return open_tree(dirfd, path, flags);
+}
+#endif /* USE_LIBMOUNT_MOUNTFD_SUPPORT */
 
 #ifdef TEST_PROGRAM
 static int test_match_fstype(struct libmnt_test *ts __attribute__((unused)),
