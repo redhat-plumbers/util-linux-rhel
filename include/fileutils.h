@@ -6,7 +6,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#ifdef HAVE_LINUX_OPENAT2_H
+# include <linux/openat2.h>
+#endif
+
 #include "c.h"
+#include "pathnames.h"
 
 extern int mkstemp_cloexec(char *template);
 
@@ -51,10 +56,27 @@ static inline int is_same_inode(const int fd, const struct stat *st)
 	return 1;
 }
 
+extern int ul_open_no_symlinks(const char *path, int flags, mode_t mode);
+extern int ul_openat_resolve(int dirfd, const char *path, int flags,
+			     mode_t mode, unsigned long long resolve);
+
+#ifndef RESOLVE_NO_SYMLINKS
+# define RESOLVE_NO_SYMLINKS	0x04
+#endif
+#ifndef RESOLVE_BENEATH
+# define RESOLVE_BENEATH	0x08
+#endif
+
 extern int dup_fd_cloexec(int oldfd, int lowfd);
 extern int get_fd_tabsize(void);
 
 extern int mkdir_p(const char *path, mode_t mode);
 extern char *stripoff_last_component(char *path);
+
+/* Size of the buffer for ul_fd_mkpath() */
+#define UL_FDPATH_BUFSIZ	(sizeof(_PATH_PROC_FDDIR) + sizeof(stringify_value(INT_MAX)))
+
+extern char *ul_fd_mkpath(char *buf, size_t bufsz, int fd);
+extern char *ul_fd_get_path(int fd);
 
 #endif /* UTIL_LINUX_FILEUTILS */

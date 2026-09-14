@@ -231,6 +231,7 @@ AC_CHECK_HEADERS([ \
 	linux/falloc.h \
 	linux/watchdog.h \
 	linux/fd.h \
+	linux/openat2.h \
 	linux/raw.h \
 	linux/tiocl.h \
 	linux/version.h \
