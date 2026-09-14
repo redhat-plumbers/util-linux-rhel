@@ -158,6 +158,7 @@ headers = '''
         linux/fd.h
         linux/fs.h
         linux/net_namespace.h
+        linux/openat2.h
         linux/raw.h
         linux/securebits.h
         linux/tiocl.h

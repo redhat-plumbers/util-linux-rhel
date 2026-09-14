@@ -309,6 +309,7 @@ AC_CHECK_HEADERS([ \
 	linux/fiemap.h \
 	linux/net_namespace.h \
 	linux/nsfs.h \
+	linux/openat2.h \
 	linux/raw.h \
 	linux/securebits.h \
 	linux/tiocl.h \
