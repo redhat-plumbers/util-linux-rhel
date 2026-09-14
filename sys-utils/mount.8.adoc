@@ -184,6 +184,12 @@ Since util-linux 2.35, *mount* does not exit when user permissions are inadequat
 
 For more details, see *fstab*(5). Only the user that mounted a filesystem can unmount it again. If any user should be able to unmount it, then use *users* instead of *user* in the _fstab_ line. The *owner* option is similar to the *user* option, with the restriction that the user must be the owner of the special file. This may be useful e.g. for _/dev/fd_ if a login script makes the console user owner of this device. The *group* option is similar, with the restriction that the user must be a member of the group of the special file.
 
+For unprivileged users the mount target from _fstab_ is opened before the filesystem is attached and the mount operation uses this file descriptor rather than the path, so the path is not resolved for the second time by the kernel. Symbolic links are not followed in the target path at all, a _fstab_ entry with a symbolic link in the mount point path is unusable for unprivileged users and the mount fails.
+
+WARNING: The pinned target is referenced by a _/proc/self/fd/_ path, which requires a mounted _/proc_ filesystem. Without _/proc_ the target path is resolved by the kernel again and the inherent time-of-check-to-time-of-use (TOCTOU) window between the verification and the mount operation remains; if an ancestor directory of the mount target is writable by the unprivileged user, a path component could be swapped to redirect the mount to an unintended location. Administrators should ensure that mount target paths for *user* mounts do not traverse directories writable by unprivileged users.
+
+An _fstab_ entry which cannot be mounted by one kernel operation is not supported for unprivileged users. This is the case for *bind* (the *nosuid*, *nodev* and *noexec* flags implied by the *user* option have to be applied by an additional remount operation, and until then the filesystem would be attached without them) and for the propagation flags (*shared*, *slave*, *private*, *unbindable*, and their recursive variants). Such entries are refused, only root can mount them.
+
 === Bind mount operation
 
 Remount part of the file hierarchy somewhere else. The call is:
