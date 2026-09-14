@@ -331,6 +331,8 @@ struct libmnt_context
 
 	int	syscall_status;	/* 1: not called yet, 0: success, <0: -errno */
 
+	int	fd_target;	/* pinned target fd (RESOLVE_NO_SYMLINKS) */
+
 	unsigned int	enabled_textdomain : 1;		/* bindtextdomain() called */
 };
 
@@ -409,6 +411,10 @@ extern int mnt_context_prepare_helper(struct libmnt_context *cxt,
 extern int mnt_context_prepare_update(struct libmnt_context *cxt);
 extern int mnt_context_merge_mflags(struct libmnt_context *cxt);
 extern int mnt_context_update_tabs(struct libmnt_context *cxt);
+
+extern int mnt_context_target_fd_required(struct libmnt_context *cxt);
+extern int mnt_context_get_target_fd(struct libmnt_context *cxt);
+extern void mnt_context_close_target_fd(struct libmnt_context *cxt);
 
 extern int mnt_context_umount_setopt(struct libmnt_context *cxt, int c, char *arg);
 extern int mnt_context_mount_setopt(struct libmnt_context *cxt, int c, char *arg);

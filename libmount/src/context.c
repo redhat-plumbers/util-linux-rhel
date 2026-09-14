@@ -60,6 +60,8 @@ struct libmnt_context *mnt_new_context(void)
 
 	cxt->loopdev_fd = -1;
 
+	cxt->fd_target = -1;
+
 	/* if we're really root and aren't running setuid */
 	cxt->restricted = (uid_t) 0 == ruid && ruid == euid ? 0 : 1;
 
@@ -157,6 +159,7 @@ int mnt_reset_context(struct libmnt_context *cxt)
 	}
 
 	mnt_context_reset_status(cxt);
+	mnt_context_close_target_fd(cxt);
 
 	if (cxt->table_fltrcb)
 		mnt_context_set_tabfilter(cxt, NULL, NULL);
@@ -284,6 +287,40 @@ static int set_flag(struct libmnt_context *cxt, int flag, int enable)
 int mnt_context_is_restricted(struct libmnt_context *cxt)
 {
 	return cxt->restricted;
+}
+
+int mnt_context_target_fd_required(struct libmnt_context *cxt)
+{
+	return mnt_context_is_restricted(cxt);
+}
+
+int mnt_context_get_target_fd(struct libmnt_context *cxt)
+{
+	assert(cxt);
+
+	if (cxt->fd_target < 0) {
+		const char *target = mnt_fs_get_target(cxt->fs);
+
+		if (!target) {
+			/* keep errno usable for callers which use -errno */
+			errno = EINVAL;
+			return -EINVAL;
+		}
+		cxt->fd_target = ul_open_no_symlinks(target,
+					O_PATH | O_CLOEXEC, 0);
+		DBG(CXT, ul_debugobj(cxt,"open target fd=%d [%s]",
+					cxt->fd_target, target));
+	}
+	return cxt->fd_target;
+}
+
+void mnt_context_close_target_fd(struct libmnt_context *cxt)
+{
+	assert(cxt);
+
+	if (cxt->fd_target >= 0)
+		close(cxt->fd_target);
+	cxt->fd_target = -1;
 }
 
 /**
@@ -1633,6 +1670,48 @@ static int mkdir_target(const char *tgt, struct libmnt_fs *fs)
 	return rc;
 }
 
+/*
+ * Pin the target for non-root users.
+ *
+ * The target comes from fstab, but any component of the path may be a symlink
+ * controlled by the user. mnt_resolve_path() would follow it with root
+ * privileges and the mount would end up somewhere else. Open the path as it is
+ * with RESOLVE_NO_SYMLINKS instead, and then use the name the kernel gives to
+ * the pinned directory as the canonical target.
+ *
+ * The name is symlink free and normalized, and it's the same name the kernel
+ * later reports in mountinfo -- utab and non-root umount rely on that.
+ */
+static int pin_target(struct libmnt_context *cxt)
+{
+	const char *tgt;
+	char *path;
+	int fd, rc = 0;
+
+	fd = mnt_context_get_target_fd(cxt);
+	if (fd < 0) {
+		/* note that the kernel refuses a symlink in the path with
+		 * ELOOP, mount(8) reports it as "mount failed: Too many
+		 * levels of symbolic links" */
+		rc = -errno;
+		DBG(CXT, ul_debugobj(cxt, "failed to pin target [rc=%d]", rc));
+		return rc;
+	}
+
+	path = ul_fd_get_path(fd);
+	if (!path) {
+		DBG(CXT, ul_debugobj(cxt, "failed to read pinned target path"));
+		return -errno;
+	}
+
+	tgt = mnt_fs_get_target(cxt->fs);
+	if (!tgt || strcmp(path, tgt) != 0)
+		rc = mnt_fs_set_target(cxt->fs, path);
+
+	free(path);
+	return rc;
+}
+
 int mnt_context_prepare_target(struct libmnt_context *cxt)
 {
 	const char *tgt;
@@ -1660,20 +1739,27 @@ int mnt_context_prepare_target(struct libmnt_context *cxt)
 			return rc;	/* mkdir or parse error */
 	}
 
-	/* canonicalize the path */
-	cache = mnt_context_get_cache(cxt);
-	if (cache) {
-		char *path = mnt_resolve_path(tgt, cache);
-		if (path && strcmp(path, tgt) != 0)
-			rc = mnt_fs_set_target(cxt->fs, path);
+	/* canonicalize the path; for non-root users this is done from the
+	 * pinned target FD, see pin_target() */
+	if (!mnt_context_target_fd_required(cxt)) {
+		cache = mnt_context_get_cache(cxt);
+		if (cache) {
+			char *path = mnt_resolve_path(tgt, cache);
+			if (path && strcmp(path, tgt) != 0)
+				rc = mnt_fs_set_target(cxt->fs, path);
+		}
 	}
 
+	if (rc == 0 && mnt_context_target_fd_required(cxt))
+		rc = pin_target(cxt);
+
 	if (rc)
-		DBG(CXT, ul_debugobj(cxt, "failed to prepare target '%s'", tgt));
+		DBG(CXT, ul_debugobj(cxt, "failed to prepare target '%s' [rc=%d]",
+					tgt, rc));
 	else
 		DBG(CXT, ul_debugobj(cxt, "final target '%s'",
 					mnt_fs_get_target(cxt->fs)));
-	return 0;
+	return rc;
 }
 
 /* Guess type, but not set to cxt->fs, always use free() for the result. It's

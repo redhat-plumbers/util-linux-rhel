@@ -22,6 +22,7 @@
 #include "linux_version.h"
 #include "mountP.h"
 #include "strutils.h"
+#include "fileutils.h"
 
 /*
  * Kernel supports only one MS_PROPAGATION flag change by one mount(2) syscall,
@@ -261,7 +262,15 @@ static int fix_optstr(struct libmnt_context *cxt)
 		free(fs->user_optstr);
 		fs->user_optstr = NULL;
 	}
+
+	/* A multi-step mount(2) sequence is not atomic: between the calls the
+	 * filesystem is already attached, but without the security flags
+	 * (nosuid, noexec, ...), and the additional calls address the target
+	 * by pathname again.  Refuse it for non-root users.
+	 */
 	if (cxt->mountflags & MS_PROPAGATION) {
+		if (mnt_context_is_restricted(cxt))
+			goto eperm;
 		rc = init_propagation(cxt);
 		if (rc)
 			return rc;
@@ -269,6 +278,8 @@ static int fix_optstr(struct libmnt_context *cxt)
 	if ((cxt->mountflags & MS_BIND)
 	    && (cxt->mountflags & MNT_BIND_SETTABLE)
 	    && !(cxt->mountflags & MS_REMOUNT)) {
+		if (mnt_context_is_restricted(cxt))
+			goto eperm;
 		rc = init_bind_remount(cxt);
 		if (rc)
 			return rc;
@@ -359,6 +370,9 @@ done:
 	if (rc)
 		rc = -MNT_ERR_MOUNTOPT;
 	return rc;
+eperm:
+	DBG(CXT, ul_debugobj(cxt, "multi-step mount(2) refused for non-root user"));
+	return -EPERM;
 }
 
 /*
@@ -724,8 +738,9 @@ static int do_mount_additional(struct libmnt_context *cxt,
  */
 static int do_mount(struct libmnt_context *cxt, const char *try_type)
 {
-	int rc = 0;
-	const char *src, *target, *type;
+	int rc = 0, fd_src = -1;
+	const char *src, *target, *mnt_target, *type;
+	char tgtfdpath[UL_FDPATH_BUFSIZ], srcfdpath[UL_FDPATH_BUFSIZ];
 	unsigned long flags;
 
 	assert(cxt);
@@ -769,11 +784,69 @@ static int do_mount(struct libmnt_context *cxt, const char *try_type)
 	if (try_type)
 		flags |= MS_SILENT;
 
+	/* For non-root users mount(2) the already pinned target FD rather
+	 * than the path. mount(2) resolves the path for the second time and
+	 * the result does not have to be the directory we have verified in
+	 * mnt_context_prepare_target(). The kernel follows the /proc/ link
+	 * directly to the pinned directory, and mountinfo still reports the
+	 * real mountpoint path.
+	 *
+	 * Fallback to the path if /proc is not available; mount(2) is racy by
+	 * design, let's harden it where we can.
+	 */
+	mnt_target = target;
+
+	if (mnt_context_target_fd_required(cxt)) {
+		int fd = mnt_context_get_target_fd(cxt);
+		struct stat st;
+
+		if (fd < 0)
+			return -errno;
+		if (!ul_fd_mkpath(tgtfdpath, sizeof(tgtfdpath), fd))
+			return -errno;
+
+		if (stat(tgtfdpath, &st) == 0)
+			mnt_target = tgtfdpath;
+		else
+			DBG(CXT, ul_debugobj(cxt, "%s not accessible, "
+					"using target path", tgtfdpath));
+	}
+
+	/* The source of a bind or move operation is a pathname resolved by
+	 * mount(2) too, so for non-root users pin it in the same way as the
+	 * target. Otherwise a symlink in the source path is followed and the
+	 * kernel attaches something else than the directory from fstab.
+	 *
+	 * Note that mnt_context_prepare_srcpath() has already canonicalized
+	 * the path with root privileges; the pin closes the window between
+	 * that and the path resolution done by mount(2).
+	 */
+	if (mnt_context_target_fd_required(cxt)
+	    && (flags & (MS_BIND | MS_MOVE))
+	    && !(flags & MS_REMOUNT)
+	    && mnt_fs_get_srcpath(cxt->fs)) {
+		struct stat st;
+
+		fd_src = ul_open_no_symlinks(src, O_PATH | O_CLOEXEC, 0);
+		if (fd_src < 0)
+			return -errno;
+		if (!ul_fd_mkpath(srcfdpath, sizeof(srcfdpath), fd_src)) {
+			rc = -errno;
+			goto done;
+		}
+
+		if (stat(srcfdpath, &st) == 0)
+			src = srcfdpath;
+		else
+			DBG(CXT, ul_debugobj(cxt, "%s not accessible, "
+					"using source path", srcfdpath));
+	}
+
 	DBG(CXT, ul_debugobj(cxt, "%smount(2) "
 			"[source=%s, target=%s, type=%s, "
 			" mountflags=0x%08lx, mountdata=%s]",
 			mnt_context_is_fake(cxt) ? "(FAKE) " : "",
-			src, target, type,
+			src, mnt_target, type,
 			flags, cxt->mountdata ? "yes" : "<none>"));
 
 	if (mnt_context_is_fake(cxt)) {
@@ -786,17 +859,20 @@ static int do_mount(struct libmnt_context *cxt, const char *try_type)
 		/*
 		 * propagation flags *only*
 		 */
-		if (do_mount_additional(cxt, target, flags, &cxt->syscall_status))
-			return -MNT_ERR_APPLYFLAGS;
+		if (do_mount_additional(cxt, target, flags, &cxt->syscall_status)) {
+			rc = -MNT_ERR_APPLYFLAGS;
+			goto done;
+		}
 	} else {
 		/*
 		 * regular mount
 		 */
-		if (mount(src, target, type, flags, cxt->mountdata)) {
+		if (mount(src, mnt_target, type, flags, cxt->mountdata)) {
 			cxt->syscall_status = -errno;
 			DBG(CXT, ul_debugobj(cxt, "mount(2) failed [errno=%d %m]",
 							-cxt->syscall_status));
-			return -cxt->syscall_status;
+			rc = -cxt->syscall_status;
+			goto done;
 		}
 		DBG(CXT, ul_debugobj(cxt, "  success"));
 		cxt->syscall_status = 0;
@@ -808,7 +884,8 @@ static int do_mount(struct libmnt_context *cxt, const char *try_type)
 		    && do_mount_additional(cxt, target, flags, NULL)) {
 
 			/* TODO: call umount? */
-			return -MNT_ERR_APPLYFLAGS;
+			rc = -MNT_ERR_APPLYFLAGS;
+			goto done;
 		}
 	}
 
@@ -818,6 +895,9 @@ static int do_mount(struct libmnt_context *cxt, const char *try_type)
 			rc = mnt_fs_set_fstype(fs, try_type);
 	}
 
+done:
+	if (fd_src >= 0)
+		close(fd_src);
 	return rc;
 }
 
